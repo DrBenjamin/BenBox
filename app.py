@@ -268,6 +268,7 @@ if not st.session_state["IS_EMBED"]:
             "💻 Review Code",
             "🩻 Image Recognition",
             "❄️ Navigator",
+            "📝 Erstelle neue Inhalte",
             "🤖 OpenAI Agents"
         ),
         index=st.session_state.query if st.session_state.query else 0,
@@ -285,6 +286,8 @@ else:
         func_choice = "🩻 Image Recognition"
     elif st.session_state.query == 5:
         func_choice = "❄️ Navigator"
+    elif st.session_state.query == 6:
+        func_choice = "📝 Erstelle neue Inhalte"
     else:
         func_choice = "🤖 OpenAI Agents"
 
@@ -857,6 +860,185 @@ elif func_choice == "❄️ Navigator":
     else:
         if selected_disp == "Erstelle neue Tabelle":
             st.info("Bitte integriere zuerst Dokumente, um eine Vektorbank zu erstellen.")
+
+elif func_choice == "📝 Erstelle neue Inhalte":
+    if not st.session_state["IS_EMBED"]:
+        st.title("📝 Erstelle neue Inhalte")
+    
+    st.markdown("**Neue Inhalte erstellen und in Snowflake speichern**")
+    
+    # Content creation form
+    with st.form("content_creation_form"):
+        content_type = st.selectbox(
+            "Inhaltstyp auswählen",
+            ["Text", "Dokument", "Notiz", "Artikel"]
+        )
+        
+        title = st.text_input("Titel", placeholder="Titel des Inhalts eingeben...")
+        
+        content = st.text_area(
+            "Inhalt", 
+            placeholder="Inhalt hier eingeben...",
+            height=200
+        )
+        
+        # File upload option
+        uploaded_file = st.file_uploader(
+            "Oder Datei hochladen", 
+            type=["txt", "md", "docx", "pdf"],
+            help="Unterstützte Formate: TXT, MD, DOCX, PDF"
+        )
+        
+        tags = st.text_input(
+            "Tags (optional)", 
+            placeholder="Tags durch Komma getrennt...",
+            help="Tags helfen beim späteren Finden des Inhalts"
+        )
+        
+        submit_button = st.form_submit_button("Inhalt erstellen")
+        
+        if submit_button:
+            if not title and not uploaded_file:
+                st.error("Bitte einen Titel eingeben oder eine Datei hochladen.")
+            elif not content and not uploaded_file:
+                st.error("Bitte Inhalt eingeben oder eine Datei hochladen.")
+            else:
+                with st.spinner("Erstelle neuen Inhalt..."):
+                    try:
+                        file_upload_result = None
+                        
+                        # Handle file upload first if provided
+                        if uploaded_file is not None:
+                            # Process file upload
+                            file_bytes = uploaded_file.read()
+                            file_b64 = base64.b64encode(file_bytes).decode('utf-8')
+                            
+                            async def _upload_file():
+                                result = await _mcp_client.session.call_tool(
+                                    "upload_file_content",
+                                    {
+                                        "file_data": file_b64,
+                                        "filename": uploaded_file.name,
+                                        "content_type": content_type.lower()
+                                    }
+                                )
+                                return result
+                            
+                            upload_execution = asyncio.run_coroutine_threadsafe(_upload_file(), _mcp_loop).result()
+                            
+                            if upload_execution and upload_execution.content:
+                                upload_content = upload_execution.content[0]
+                                upload_result_text = getattr(upload_content, 'text', str(upload_content))
+                                try:
+                                    file_upload_result = json.loads(upload_result_text)
+                                except:
+                                    file_upload_result = {"status": "success", "message": upload_result_text}
+                            
+                            # Use file content if no manual content provided
+                            try:
+                                if not content:
+                                    content = file_bytes.decode('utf-8')
+                                if not title:
+                                    title = uploaded_file.name
+                            except UnicodeDecodeError:
+                                st.warning("Datei konnte nicht als Text gelesen werden. Bitte manuell Inhalt eingeben.")
+                        
+                        # Prepare content data
+                        content_data = {
+                            "title": title,
+                            "content": content,
+                            "type": content_type.lower(),
+                            "tags": [tag.strip() for tag in tags.split(",") if tag.strip()],
+                            "file_upload_id": file_upload_result.get("file_id") if file_upload_result else None
+                        }
+                        
+                        # Call MCP tool to create content
+                        async def _create_content():
+                            result = await _mcp_client.session.call_tool(
+                                "create_content",
+                                {
+                                    "content_data": json.dumps(content_data),
+                                    "content_type": content_type.lower()
+                                }
+                            )
+                            return result
+                        
+                        execution = asyncio.run_coroutine_threadsafe(_create_content(), _mcp_loop).result()
+                        
+                        # Process result
+                        if execution and execution.content:
+                            content_result = execution.content[0]
+                            result_text = getattr(content_result, 'text', str(content_result))
+                            
+                            try:
+                                result_data = json.loads(result_text)
+                                if result_data.get("status") == "success":
+                                    st.success("✅ Inhalt erfolgreich erstellt!")
+                                    
+                                    # Show detailed success information
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1:
+                                        st.metric("Content ID", result_data.get("content_id", "N/A")[:8] + "...")
+                                    with col2:
+                                        st.metric("Wörter", result_data.get("word_count", 0))
+                                    with col3:
+                                        st.metric("Zeichen", result_data.get("content_length", 0))
+                                    
+                                    # Show file upload result if applicable
+                                    if file_upload_result and file_upload_result.get("status") == "success":
+                                        st.info(f"📁 Datei hochgeladen: {file_upload_result.get('filename')} ({file_upload_result.get('file_size', 0)} Bytes)")
+                                    
+                                    # Show created content summary
+                                    with st.expander("Erstellter Inhalt anzeigen"):
+                                        st.write(f"**Titel:** {title}")
+                                        st.write(f"**Typ:** {content_type}")
+                                        st.write(f"**Erstellt:** {result_data.get('created_at', 'N/A')}")
+                                        if content_data['tags']:
+                                            st.write(f"**Tags:** {', '.join(content_data['tags'])}")
+                                        st.write("**Inhalt:**")
+                                        st.text_area("", value=content, height=150, disabled=True)
+                                else:
+                                    st.error(f"❌ {result_data.get('message', 'Unbekannter Fehler')}")
+                            except json.JSONDecodeError:
+                                st.success("✅ Inhalt erfolgreich erstellt!")
+                                st.info(f"📋 Details: {result_text}")
+                        else:
+                            st.error("❌ Fehler beim Erstellen des Inhalts.")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Fehler beim Erstellen des Inhalts: {str(e)}")
+    
+    # Add template generation feature
+    st.markdown("---")
+    st.markdown("**📋 Content Template Generator**")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        template_type = st.selectbox("Template Typ", ["text", "document", "note", "article"], key="template_type")
+    with col2:
+        template_title = st.text_input("Template Titel", key="template_title")
+    
+    if st.button("Template generieren"):
+        with st.spinner("Generiere Content Template..."):
+            try:
+                async def _get_template():
+                    result = await _mcp_client.session.get_prompt(
+                        "create_content_prompt",
+                        {"content_type": template_type, "title": template_title}
+                    )
+                    return result
+                
+                template_execution = asyncio.run_coroutine_threadsafe(_get_template(), _mcp_loop).result()
+                
+                if template_execution and hasattr(template_execution, "messages"):
+                    template_content = template_execution.messages[0].content if template_execution.messages else "Template nicht verfügbar"
+                    st.markdown("**Generiertes Template:**")
+                    st.code(template_content, language="markdown")
+                else:
+                    st.warning("Template konnte nicht generiert werden.")
+                    
+            except Exception as e:
+                st.error(f"Fehler beim Generieren des Templates: {str(e)}")
 
 elif func_choice == "🤖 OpenAI Agents":
     if not st.session_state["IS_EMBED"]:

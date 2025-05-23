@@ -9,3 +9,4 @@ jinja2
 minio
 dbt-core
 dbt-snowflake
+snowflake-connector-python
