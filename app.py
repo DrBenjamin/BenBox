@@ -27,6 +27,7 @@ from src.server.snowrag.llms import Cortex
 from src.server.snowrag.embedding import SnowflakeEmbeddings
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
+from azure.ai.agents.models import ToolSet, OpenApiTool, OpenApiAnonymousAuthDetails
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -871,29 +872,32 @@ elif func_choice == "🤖 OpenAI Agents":
             credential=DefaultAzureCredential(),
             conn_str="swedencentral.api.azureml.ms;fe22c842-64d1-4cb3-b434-bf57d79bf16f;elearning;benbox-agent"
         )
-        # = ToolSet()
-        #mcp_openapi_url = f"{st.secrets['MCP']['MCP_URL']}/openapi.json"
-        #try:
-        #    response = requests.get(mcp_openapi_url)
-        #    response.raise_for_status()
-        #    mcp_openapi_spec = response.json()
-        #except Exception as e:
-        #    st.error(f"Failed to load MCP OpenAPI spec: {e}")
-
-        #mcp_openapi_tool = OpenApiTool(
-        #    name="mcp_tools",
-        #    spec=mcp_openapi_spec,
-        #    description="MCP tools",
-        #    auth=OpenApiAnonymousAuthDetails()
-        #)
-        #toolset.add(mcp_openapi_tool)
+        toolset = ToolSet()
+        mcp_openapi_url = f"{st.secrets['MCP']['MCP_URL']}/openapi.json"
+        try:
+            response = requests.get(mcp_openapi_url)
+            response.raise_for_status()
+            mcp_openapi_spec = response.json()
+            
+            # Create and add the OpenAPI tool to the toolset
+            mcp_openapi_tool = OpenApiTool(
+                name="mcp_tools",
+                spec=mcp_openapi_spec,
+                description="MCP tools for accessing remote functionality including image recognition, country code lookup and more",
+                auth=OpenApiAnonymousAuthDetails()
+            )
+            toolset.add(mcp_openapi_tool)
+            st.toast("Successfully loaded MCP OpenAPI tools")
+        except Exception as e:
+            st.error(f"Failed to load MCP OpenAPI spec: {e}")
+            # Continue with empty toolset if OpenAPI spec fails
 
         # Creating Agent 1
         agent1 = project_client.agents.create_agent(
             model="gpt-4o-mini",
             name="Agent One",
             instructions="You are Agent One. Don't use the MCP tools provided via OpenAPI.",
-            #toolset=toolset,
+            # No toolset for Agent 1
         )
         st.toast(f"Created agent 1, ID: {agent1.id}")
 
@@ -901,8 +905,8 @@ elif func_choice == "🤖 OpenAI Agents":
         agent2 = project_client.agents.create_agent(
             model="gpt-4o-mini",
             name="Agent Two",
-            instructions="You are Agent Two. Use only the MCP tools provided via OpenAPI.",
-            #toolset=toolset,
+            instructions="You are Agent Two. Use the MCP tools provided via OpenAPI. These tools are remotely hosted and provide useful functionalities such as country code lookup, image recognition, code review, and more.",
+            toolset=toolset, # Add toolset with MCP OpenAPI tools to Agent 2
         )
         st.toast(f"Created agent 2, ID: {agent2.id}")
 
