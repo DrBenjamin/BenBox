@@ -3,7 +3,6 @@
 ### Open-Source, hosted on https://github.com/DrBenjamin/BenBox
 ### Please reach out to ben@seriousbenentertainment.org for any questions
 ## Modules
-import streamlit as st
 import wx
 import os
 import snowflake.connector
