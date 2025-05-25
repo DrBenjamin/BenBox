@@ -1,41 +1,70 @@
-<!-- Header -->
-<div class="app-header">
-  <h1>🔍 BenBox Performance Monitoring</h1>
-  <p>Real-time performance monitoring with Core Web Vitals tracking</p>
-</div>
-
-<!-- Main controls section -->
-<div class="controls" *ngIf="buttonsVisible">
-  <div class="button-grid">
-    <button (click)="loadQuery(0)">Country Code Lookup</button>
-    <button (click)="loadQuery(1)">Static Image</button>
-    <button (click)="loadQuery(2)">Variable Image</button>
-    <button (click)="loadQuery(3)">Review Code</button>
-    <button (click)="loadQuery(4)">Image Recognition</button>
-    <button (click)="loadQuery(5)">Navigator</button>
-    <button (click)="loadQuery(6)">OpenAI Agents</button>
-  </div>
-  
-  <!-- Monitoring Controls -->
-  <div class="monitoring-controls">
-    <h4>🔍 Monitoring Controls</h4>
-    <div class="button-grid">
-      <button (click)="showPerformanceSummary()" class="btn-success">Performance Summary</button>
-      <button (click)="getPerformanceScore()" class="btn-warning">Performance Score</button>
-      <button (click)="exportMonitoringData()" class="btn-info">Export Data</button>
+<div class="app-container">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <img src="assets/BenBox_Logo.png" alt="BenBox Logo" class="header-logo">
+      <div class="header-text">
+        <h1>BenBox</h1>
+        <p>Agentic AI ChatBot</p>
+      </div>
     </div>
-    
-    <h4>🎭 Demo & Testing</h4>
-    <div class="button-grid">
-      <button (click)="generateDemoData()" class="btn-purple">Generate Demo Data</button>
-      <button (click)="simulateUserSession()" class="btn-pink">Simulate Session</button>
-      <button (click)="clearDemoData()" class="btn-orange">Clear Demo Data</button>
+  </header>
+
+  <!-- Main controls section -->
+  <main class="controls" *ngIf="buttonsVisible">
+    <section class="general-controls" aria-labelledby="controls-heading">
+      <h4 id="quick-actions-heading">🤖 Agentic AI</h4>
+      <div class="button-grid">
+        <button (click)="loadQuery(0)" aria-label="Look up country codes">Country Code Lookup</button>
+        <button (click)="loadQuery(1)" aria-label="View static image">Static Image</button>
+        <button (click)="loadQuery(2)" aria-label="View variable image">Variable Image</button>
+        <button (click)="loadQuery(3)" aria-label="Review code">Review Code</button>
+        <button (click)="loadQuery(4)" aria-label="Perform image recognition">Image Recognition</button>
+        <button (click)="loadQuery(5)" aria-label="Open navigator">Navigator</button>
+        <button (click)="loadQuery(6)" aria-label="Access OpenAI agents">OpenAI Agents</button>
+      </div>
+      <h4 id="monitoring-heading">🔍 App Metrics Monitoring</h4>
+      <div class="button-grid">
+        <button (click)="showPerformanceSummary()" class="btn-success" aria-label="Show performance summary">Performance Summary</button>
+        <button (click)="getPerformanceScore()" class="btn-warning" aria-label="Get performance score">Performance Score</button>
+        <button (click)="showMonitoringSummary()" class="btn-primary" aria-label="Show monitoring summary">Monitoring Summary</button>
+        <button (click)="generateMonitoringReport()" class="btn-secondary" aria-label="Generate monitoring report">Generate Report</button>
+        <button (click)="exportMonitoringData()" class="btn-info" aria-label="Export monitoring data">Export Data</button>
+        <button (click)="clearMonitoringData()" class="btn-danger" aria-label="Clear monitoring data">Clear Data</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Application Content Frame -->
+  <section class="app-content" *ngIf="!buttonsVisible" aria-labelledby="app-content-heading">
+    <!-- Back to menu button -->
+    <div class="iframe-controls" style="margin-bottom: 15px; text-align: center;">
+      <button (click)="showMenu()" class="btn-primary" style="margin-right: 10px;">
+        ← Back to Menu
+      </button>
+      <button (click)="reloadIframe()" class="btn-secondary">
+        🔄 Reload
+      </button>
     </div>
-  </div>
+
+    <!-- Setting iframe to show the loaded content -->
+    <iframe
+      *ngIf="urlSafe"
+      [src]="urlSafe"
+      width="100%"
+      height="600"
+      frameborder="0"
+      style="border-radius: 12px; background: #fff;"
+      allowfullscreen
+      title="BenBox Content"
+      (load)="onIframeLoad()"
+      (error)="onIframeError($event)"
+    ></iframe>
+  </section>
+
+  <!-- Footer -->
+  <footer class="status-message" role="contentinfo">
+    <p>Copyright © 2025 BenBox - Agentic AI Platform</p>
+    <small>Optimized for mobile and desktop experience</small>
+  </footer>
 </div>
-
-<!-- Iframe content -->
-<iframe *ngIf="urlSafe" [src]="urlSafe" class="full-frame"></iframe>
-
-<!-- Metrics Dashboard -->
-<app-metrics-dashboard></app-metrics-dashboard>

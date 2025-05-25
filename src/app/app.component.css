@@ -1,3 +1,10 @@
+/* Setting iframe-controls to display buttons side by side */
+.iframe-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
 /* App Component Styles */
 .app-container {
   max-width: 1200px;
@@ -27,6 +34,19 @@
   margin: 0;
   font-size: 1.1rem;
   opacity: 0.9;
+}
+
+/* Setting logo max width */
+.header-logo {
+    width: 120px;
+    height: auto;
+}
+
+/* Setting logo responsive max width */
+@media (max-width: 768px) {
+  .header-logo {
+    width: 80px;
+  }
 }
 
 /* Controls Section */
@@ -122,8 +142,8 @@ h4 {
   padding-bottom: 8px;
 }
 
-/* Monitoring Controls */
-.monitoring-controls {
+/* General Controls */
+.general-controls {
   background: #f8fafc;
   padding: 25px;
   border-radius: 12px;
@@ -186,4 +206,25 @@ app-metrics-dashboard {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Header layout: logo left of text */
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+/* Setting logo max width */
+.header-logo {
+    width: 120px;
+    height: auto;
+}
+
+/* Responsive logo */
+@media (max-width: 768px) {
+    .header-logo {
+        width: 80px;
+    }
 }

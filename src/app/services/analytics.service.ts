@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { environment } from '../../environments/environment';
 
 export interface AnalyticsEvent {
   eventName: string;
@@ -16,7 +17,9 @@ export class AnalyticsService {
 
   constructor() {
     this.sessionId = this.generateSessionId();
-    this.trackPageLoad();
+    if (environment.analytics.enabled) {
+      this.trackPageLoad();
+    }
   }
 
   private generateSessionId(): string {
@@ -25,24 +28,41 @@ export class AnalyticsService {
 
   // Track custom events
   trackEvent(eventName: string, data: any = {}): void {
-    const event: AnalyticsEvent = {
-      eventName,
-      data: {
-        ...data,
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
-        url: typeof window !== 'undefined' ? window.location.href : 'unknown',
-        timestamp: new Date().toISOString()
-      },
-      timestamp: Date.now(),
-      sessionId: this.sessionId
-    };
+    if (!environment.analytics.enabled) {
+      return; // Skip tracking if analytics disabled
+    }
+    
+    try {
+      // Validate eventName is not undefined
+      if (!eventName || typeof eventName !== 'string') {
+        console.warn('Invalid event name provided to trackEvent:', eventName);
+        return;
+      }
 
-    this.events.push(event);
-    
-    console.log(`📊 Analytics Event: ${eventName}`, event);
-    
-    // In a real application, you would send this to an analytics server
-    this.sendToAnalyticsServer(event);
+      const event: AnalyticsEvent = {
+        eventName,
+        data: {
+          ...data,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+          url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+          timestamp: new Date().toISOString()
+        },
+        timestamp: Date.now(),
+        sessionId: this.sessionId
+      };
+
+      this.events.push(event);
+      
+      // Safer console logging
+      if (eventName && typeof eventName === 'string') {
+        console.log(`📊 Analytics Event: ${eventName}`, event);
+      }
+      
+      // In a real application, you would send this to an analytics server
+      this.sendToAnalyticsServer(event);
+    } catch (error) {
+      console.warn('Error tracking event:', error instanceof Error ? error.message : 'Unknown error');
+    }
   }
 
   // Track button clicks
