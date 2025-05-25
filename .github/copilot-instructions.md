@@ -20,7 +20,7 @@ system to store and retrieve documents as vectors for similarity search.
 **The frontend is a two-part system:**
 
 1. An Angular mobile app is also included which utilizes the Streamlit client
-application (as iframe embedded).
+application (as iframe embedded) and collects app metrics.
 
 2. A desktop app which manages the files and works with Cloud blob storage.
 It can be run locally or in the cloud.
