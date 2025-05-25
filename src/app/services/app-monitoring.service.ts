@@ -214,68 +214,100 @@ export class AppMonitoringService {
 
   // Get performance score based on Core Web Vitals
   getPerformanceScore(): { score: number; details: any } {
-    const fcp = this.performanceMonitor.getFirstContentfulPaint();
-    const lcp = this.performanceMonitor.getLargestContentfulPaint();
-    const memoryUsage = this.performanceMonitor.getMemoryUsage();
-    
-    let score = 100;
-    const details: any = {};
-
-    // Score FCP (good: <1.8s, needs improvement: 1.8s-3s, poor: >3s)
-    if (fcp) {
-      if (fcp > 3000) {
-        score -= 30;
-        details.fcp = 'poor';
-      } else if (fcp > 1800) {
-        score -= 15;
-        details.fcp = 'needs-improvement';
-      } else {
-        details.fcp = 'good';
+    try {
+      let fcp = null;
+      let lcp = null;
+      let memoryUsage = null;
+      
+      try {
+        fcp = this.performanceMonitor.getFirstContentfulPaint();
+      } catch (e) {
+        console.warn('Error getting FCP for performance score:', e);
       }
-    }
-
-    // Score LCP (good: <2.5s, needs improvement: 2.5s-4s, poor: >4s)
-    if (lcp) {
-      if (lcp > 4000) {
-        score -= 30;
-        details.lcp = 'poor';
-      } else if (lcp > 2500) {
-        score -= 15;
-        details.lcp = 'needs-improvement';
-      } else {
-        details.lcp = 'good';
+      
+      try {
+        lcp = this.performanceMonitor.getLargestContentfulPaint();
+      } catch (e) {
+        console.warn('Error getting LCP for performance score:', e);
       }
-    }
-
-    // Score memory usage
-    if (memoryUsage) {
-      const memoryUsagePercent = (memoryUsage.usedJSHeapSize / memoryUsage.jsHeapSizeLimit) * 100;
-      if (memoryUsagePercent > 80) {
-        score -= 20;
-        details.memory = 'high-usage';
-      } else if (memoryUsagePercent > 60) {
-        score -= 10;
-        details.memory = 'moderate-usage';
-      } else {
-        details.memory = 'good';
+      
+      try {
+        memoryUsage = this.performanceMonitor.getMemoryUsage();
+      } catch (e) {
+        console.warn('Error getting memory usage for performance score:', e);
       }
-    }
+      
+      let score = 100;
+      const details: any = {};
 
-    return { score: Math.max(0, score), details };
+      // Score FCP (good: <1.8s, needs improvement: 1.8s-3s, poor: >3s)
+      if (fcp) {
+        if (fcp > 3000) {
+          score -= 30;
+          details.fcp = 'poor';
+        } else if (fcp > 1800) {
+          score -= 15;
+          details.fcp = 'needs-improvement';
+        } else {
+          details.fcp = 'good';
+        }
+      }
+
+      // Score LCP (good: <2.5s, needs improvement: 2.5s-4s, poor: >4s)
+      if (lcp) {
+        if (lcp > 4000) {
+          score -= 30;
+          details.lcp = 'poor';
+        } else if (lcp > 2500) {
+          score -= 15;
+          details.lcp = 'needs-improvement';
+        } else {
+          details.lcp = 'good';
+        }
+      }
+
+      // Score memory usage
+      if (memoryUsage && 
+          typeof memoryUsage.usedJSHeapSize === 'number' && 
+          typeof memoryUsage.jsHeapSizeLimit === 'number' &&
+          memoryUsage.jsHeapSizeLimit > 0) {
+        const memoryUsagePercent = (memoryUsage.usedJSHeapSize / memoryUsage.jsHeapSizeLimit) * 100;
+        if (memoryUsagePercent > 80) {
+          score -= 20;
+          details.memory = 'high-usage';
+        } else if (memoryUsagePercent > 60) {
+          score -= 10;
+          details.memory = 'moderate-usage';
+        } else {
+          details.memory = 'good';
+        }
+      }
+
+      return { score: Math.max(0, score), details };
+    } catch (error: any) {
+      console.warn('Error calculating performance score:', error instanceof Error ? error.message : 'Unknown error');
+      return { score: 0, details: { error: 'Failed to calculate score' } };
+    }
   }
 
   // Export comprehensive monitoring data
   exportMonitoringData(): string {
-    const report = this.generateMonitoringReport();
-    const performanceScore = this.getPerformanceScore();
-    
-    const exportData = {
-      ...report,
-      performanceScore,
-      exportTimestamp: new Date().toISOString()
-    };
+    try {
+      const report = this.generateMonitoringReport();
+      const performanceScore = this.getPerformanceScore();
+      
+      const exportData = {
+        ...report,
+        performanceScore,
+        exportTimestamp: new Date().toISOString()
+      };
 
-    return JSON.stringify(exportData, null, 2);
+      return JSON.stringify(exportData, null, 2);
+    } catch (error: any) {
+      console.warn('Error exporting monitoring data:', error instanceof Error ? error.message : 'Unknown error');
+      // Return a safe empty string instead of undefined
+      return '{"error": "Failed to export data", "timestamp": "' + new Date().toISOString() + '"}';
+    }
   }
 
   // Clear all monitoring data
@@ -286,30 +318,82 @@ export class AppMonitoringService {
 
   // Get monitoring summary for display
   getMonitoringSummary(): any {
-    const performanceScore = this.getPerformanceScore();
-    const navigationTiming = this.performanceMonitor.getNavigationTiming();
-    const memoryUsage = this.performanceMonitor.getMemoryUsage();
-    const eventCounts = this.getEventCounts();
+    try {
+      let performanceScore;
+      let navigationTiming;
+      let memoryUsage;
+      let eventCounts;
+      let events = [];
+      
+      try {
+        performanceScore = this.getPerformanceScore() || { score: 0, details: {} };
+      } catch (e) {
+        console.warn('Error getting performance score for summary:', e);
+        performanceScore = { score: 0, details: {} };
+      }
+      
+      try {
+        navigationTiming = this.performanceMonitor.getNavigationTiming() || {};
+      } catch (e) {
+        console.warn('Error getting navigation timing for summary:', e);
+        navigationTiming = {};
+      }
+      
+      try {
+        memoryUsage = this.performanceMonitor.getMemoryUsage() || {};
+      } catch (e) {
+        console.warn('Error getting memory usage for summary:', e);
+        memoryUsage = {};
+      }
+      
+      try {
+        events = this.analytics.getEvents() || [];
+        eventCounts = this.getEventCounts() || {};
+      } catch (e) {
+        console.warn('Error getting events for summary:', e);
+        events = [];
+        eventCounts = {};
+      }
 
-    return {
-      performanceScore: performanceScore.score,
-      performanceDetails: performanceScore.details,
-      loadTime: navigationTiming?.loadComplete || 0,
-      memoryUsed: memoryUsage?.usedJSHeapSize || 0,
-      totalEvents: this.analytics.getEvents().length,
-      eventBreakdown: eventCounts,
-      sessionDuration: Date.now() - this.monitoringStartTime
-    };
+      return {
+        performanceScore: performanceScore.score,
+        performanceDetails: performanceScore.details,
+        loadTime: navigationTiming?.loadComplete || 0,
+        memoryUsed: memoryUsage?.usedJSHeapSize || 0,
+        totalEvents: events.length,
+        eventBreakdown: eventCounts,
+        sessionDuration: Date.now() - this.monitoringStartTime
+      };
+    } catch (error: any) {
+      console.warn('Error generating monitoring summary:', error instanceof Error ? error.message : 'Unknown error');
+      // Return a safe default object
+      return {
+        performanceScore: 0,
+        performanceDetails: {},
+        loadTime: 0,
+        memoryUsed: 0,
+        totalEvents: 0,
+        eventBreakdown: {},
+        sessionDuration: 0
+      };
+    }
   }
 
   private getEventCounts(): any {
-    const events = this.analytics.getEvents();
-    const counts: any = {};
-    
-    events.forEach(event => {
-      counts[event.eventName] = (counts[event.eventName] || 0) + 1;
-    });
+    try {
+      const events = this.analytics.getEvents() || [];
+      const counts: any = {};
+      
+      events.forEach(event => {
+        if (event && event.eventName) {
+          counts[event.eventName] = (counts[event.eventName] || 0) + 1;
+        }
+      });
 
-    return counts;
+      return counts;
+    } catch (error: any) {
+      console.warn('Error counting events:', error instanceof Error ? error.message : 'Unknown error');
+      return {};
+    }
   }
 }

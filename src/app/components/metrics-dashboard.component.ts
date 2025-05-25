@@ -80,7 +80,7 @@ import { AnalyticsService } from '../services/analytics.service';
           <div class="vital-metric">
             <span class="vital-label">CLS</span>
             <span class="vital-value">
-              {{ cls !== null ? cls.toFixed(3) : 'N/A' }}
+              {{ cls !== null && cls !== undefined ? cls.toFixed(3) : 'N/A' }}
             </span>
           </div>
         </div>
@@ -357,8 +357,23 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
 
   refreshMetrics(): void {
     try {
-      const summary = this.appMonitoring.getMonitoringSummary();
-      const scoreData = this.appMonitoring.getPerformanceScore();
+      // Use safe defaults in case methods return undefined
+      let summary;
+      let scoreData;
+      
+      try {
+        summary = this.appMonitoring.getMonitoringSummary() || {};
+      } catch (e) {
+        summary = {};
+        console.warn('Error getting monitoring summary:', e);
+      }
+      
+      try {
+        scoreData = this.appMonitoring.getPerformanceScore() || { score: 0, details: {} };
+      } catch (e) {
+        scoreData = { score: 0, details: {} };
+        console.warn('Error getting performance score:', e);
+      }
       
       this.performanceScore = scoreData?.score || 0;
       this.loadTime = summary?.loadTime || 0;
@@ -368,24 +383,41 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
       
       // Get top feature
       const eventBreakdown = summary?.eventBreakdown || {};
-      if (eventBreakdown.button_click) {
+      if (eventBreakdown?.button_click) {
         this.topFeature = 'Button Clicks';
-      } else if (eventBreakdown.iframe_load) {
+      } else if (eventBreakdown?.iframe_load) {
         this.topFeature = 'Iframe Loads';
       } else {
         this.topFeature = 'Page Views';
       }
 
-      // Get Core Web Vitals
-      this.fcp = this.performanceMonitor.getFirstContentfulPaint() || 0;
-      this.lcp = this.performanceMonitor.getLargestContentfulPaint() || 0;
+      // Get Core Web Vitals with defensive coding
+      try {
+        this.fcp = this.performanceMonitor.getFirstContentfulPaint() || 0;
+      } catch (e) {
+        this.fcp = 0;
+        console.warn('Error getting FCP:', e);
+      }
+      
+      try {
+        this.lcp = this.performanceMonitor.getLargestContentfulPaint() || 0;
+      } catch (e) {
+        this.lcp = 0;
+        console.warn('Error getting LCP:', e);
+      }
+      
       this.cls = 0; // CLS would be tracked by the monitoring service - set to 0 for now
 
-      // Get recent events
-      const allEvents = this.analytics.getEvents() || [];
-      this.recentEvents = allEvents.slice(-5).reverse();
-    } catch (error) {
-      console.warn('Error refreshing metrics:', error);
+      // Get recent events with defensive coding
+      try {
+        const allEvents = this.analytics.getEvents() || [];
+        this.recentEvents = allEvents.slice(-5).reverse();
+      } catch (e) {
+        this.recentEvents = [];
+        console.warn('Error getting analytics events:', e);
+      }
+    } catch (error: any) {
+      console.warn('Error refreshing metrics:', error instanceof Error ? error.message : 'Unknown error');
       // Set safe default values
       this.performanceScore = 0;
       this.loadTime = 0;
@@ -402,7 +434,7 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
   exportData(): void {
     try {
       const data = this.appMonitoring.exportMonitoringData();
-      if (!data) {
+      if (data === undefined || data === null || data === '') {
         console.warn('No monitoring data available for export');
         return;
       }
@@ -415,8 +447,8 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
         a.click();
       }
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error exporting data:', error);
+    } catch (error: any) {
+      console.error('Error exporting data:', error instanceof Error ? error.message : 'Unknown error');
     }
   }
 
@@ -430,14 +462,14 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
   }
 
   getScoreClass(score: number | null | undefined): string {
-    if (!score || score < 0) return 'poor';
+    if (score === null || score === undefined || isNaN(score) || score < 0) return 'poor';
     if (score >= 80) return 'good';
     if (score >= 60) return 'moderate';
     return 'poor';
   }
 
   getScoreDescription(score: number | null | undefined): string {
-    if (!score || score < 0) return 'No data available';
+    if (score === null || score === undefined || isNaN(score) || score < 0) return 'No data available';
     if (score >= 80) return 'Excellent performance';
     if (score >= 60) return 'Good performance';
     if (score >= 40) return 'Needs improvement';
@@ -445,7 +477,7 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
   }
 
   getVitalClass(vital: string, value: number | null): string {
-    if (!value) return '';
+    if (value === null || value === undefined || isNaN(value)) return '';
     
     if (vital === 'fcp') {
       if (value <= 1800) return 'good';
@@ -463,7 +495,7 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
   }
 
   formatBytes(bytes: number | null | undefined): string {
-    if (!bytes || bytes === 0) return '0 B';
+    if (bytes === null || bytes === undefined || isNaN(bytes) || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -471,7 +503,7 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
   }
 
   formatDuration(ms: number | null | undefined): string {
-    if (!ms || ms === 0) return '0s';
+    if (ms === null || ms === undefined || isNaN(ms) || ms === 0) return '0s';
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
@@ -486,7 +518,7 @@ export class MetricsDashboardComponent implements OnInit, OnDestroy {
   }
 
   formatEventTime(timestamp: number | null | undefined): string {
-    if (!timestamp) return 'Unknown';
+    if (timestamp === null || timestamp === undefined || isNaN(timestamp)) return 'Unknown';
     const now = Date.now();
     const diff = now - timestamp;
     const seconds = Math.floor(diff / 1000);
