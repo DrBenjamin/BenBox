@@ -39,7 +39,6 @@ ENV PATH="/home/ben/micromamba/envs/benbox/bin:$PATH"
 # Copying the rest of the repo (after env is built)
 COPY --chown=ben:ben . $HOME/BenBox
 USER root
-RUN chmod +x $HOME/BenBox/run.sh
 RUN chown -R ben:ben $HOME/BenBox
 USER ben
 
