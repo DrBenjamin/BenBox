@@ -214,54 +214,80 @@ export class AppMonitoringService {
 
   // Get performance score based on Core Web Vitals
   getPerformanceScore(): { score: number; details: any } {
-    const fcp = this.performanceMonitor.getFirstContentfulPaint();
-    const lcp = this.performanceMonitor.getLargestContentfulPaint();
-    const memoryUsage = this.performanceMonitor.getMemoryUsage();
-    
-    let score = 100;
-    const details: any = {};
-
-    // Score FCP (good: <1.8s, needs improvement: 1.8s-3s, poor: >3s)
-    if (fcp) {
-      if (fcp > 3000) {
-        score -= 30;
-        details.fcp = 'poor';
-      } else if (fcp > 1800) {
-        score -= 15;
-        details.fcp = 'needs-improvement';
-      } else {
-        details.fcp = 'good';
+    try {
+      let fcp = null;
+      let lcp = null;
+      let memoryUsage = null;
+      
+      try {
+        fcp = this.performanceMonitor.getFirstContentfulPaint();
+      } catch (e) {
+        console.warn('Error getting FCP for performance score:', e);
       }
-    }
-
-    // Score LCP (good: <2.5s, needs improvement: 2.5s-4s, poor: >4s)
-    if (lcp) {
-      if (lcp > 4000) {
-        score -= 30;
-        details.lcp = 'poor';
-      } else if (lcp > 2500) {
-        score -= 15;
-        details.lcp = 'needs-improvement';
-      } else {
-        details.lcp = 'good';
+      
+      try {
+        lcp = this.performanceMonitor.getLargestContentfulPaint();
+      } catch (e) {
+        console.warn('Error getting LCP for performance score:', e);
       }
-    }
-
-    // Score memory usage
-    if (memoryUsage) {
-      const memoryUsagePercent = (memoryUsage.usedJSHeapSize / memoryUsage.jsHeapSizeLimit) * 100;
-      if (memoryUsagePercent > 80) {
-        score -= 20;
-        details.memory = 'high-usage';
-      } else if (memoryUsagePercent > 60) {
-        score -= 10;
-        details.memory = 'moderate-usage';
-      } else {
-        details.memory = 'good';
+      
+      try {
+        memoryUsage = this.performanceMonitor.getMemoryUsage();
+      } catch (e) {
+        console.warn('Error getting memory usage for performance score:', e);
       }
-    }
+      
+      let score = 100;
+      const details: any = {};
 
-    return { score: Math.max(0, score), details };
+      // Score FCP (good: <1.8s, needs improvement: 1.8s-3s, poor: >3s)
+      if (fcp) {
+        if (fcp > 3000) {
+          score -= 30;
+          details.fcp = 'poor';
+        } else if (fcp > 1800) {
+          score -= 15;
+          details.fcp = 'needs-improvement';
+        } else {
+          details.fcp = 'good';
+        }
+      }
+
+      // Score LCP (good: <2.5s, needs improvement: 2.5s-4s, poor: >4s)
+      if (lcp) {
+        if (lcp > 4000) {
+          score -= 30;
+          details.lcp = 'poor';
+        } else if (lcp > 2500) {
+          score -= 15;
+          details.lcp = 'needs-improvement';
+        } else {
+          details.lcp = 'good';
+        }
+      }
+
+      // Score memory usage
+      if (memoryUsage && 
+          typeof memoryUsage.usedJSHeapSize === 'number' && 
+          typeof memoryUsage.jsHeapSizeLimit === 'number' &&
+          memoryUsage.jsHeapSizeLimit > 0) {
+        const memoryUsagePercent = (memoryUsage.usedJSHeapSize / memoryUsage.jsHeapSizeLimit) * 100;
+        if (memoryUsagePercent > 80) {
+          score -= 20;
+          details.memory = 'high-usage';
+        } else if (memoryUsagePercent > 60) {
+          score -= 10;
+          details.memory = 'moderate-usage';
+        } else {
+          details.memory = 'good';
+        }
+      }
+
+      return { score: Math.max(0, score), details };
+    } catch (error: any) {
+      console.warn('Error calculating performance score:', error instanceof Error ? error.message : 'Unknown error');
+      return { score: 0, details: { error: 'Failed to calculate score' } };
+    }
   }
 
   // Export comprehensive monitoring data
