@@ -4,7 +4,6 @@
 ### Please reach out to ben@seriousbenentertainment.org for any questions
 ## Modules
 import wx # wxPython / Phoenix
-import subprocess
 import src.globals as g
 
 # Method to handle the Preferences menu item
@@ -37,92 +36,94 @@ class PreferencesPage(wx.StockPreferencesPage):
         sizer.Add(self.snowflake_checkbox, 0, wx.ALL, 5)
         self.snowflake_checkbox.Bind(wx.EVT_CHECKBOX, self.on_snowflake_checkbox)
 
-        # Adding preference controls for Snowflake
-        heading_snowflake = wx.StaticText(panel, label="Snowflake Einstellungen")
-        font = heading_snowflake.GetFont()
-        font.PointSize += 2
-        heading_snowflake.SetFont(font)
-        sizer.Add(heading_snowflake, 0, wx.ALL, 5)
+        if self.snowflake_checkbox.IsChecked():
+            # Adding preference controls for Snowflake
+            heading_snowflake = wx.StaticText(panel, label="Snowflake Einstellungen")
+            font = heading_snowflake.GetFont()
+            font.PointSize += 2
+            heading_snowflake.SetFont(font)
+            sizer.Add(heading_snowflake, 0, wx.ALL, 5)
 
-        # Snowflake user
-        sizer.Add(wx.StaticText(panel, label="Snowflake User"), 0, wx.ALL, 5)
-        self.snowflake_user_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_user", ""))
-        sizer.Add(self.snowflake_user_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.snowflake_user_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_user)
+            # Snowflake user
+            sizer.Add(wx.StaticText(panel, label="Snowflake User"), 0, wx.ALL, 5)
+            self.snowflake_user_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_user", ""))
+            sizer.Add(self.snowflake_user_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.snowflake_user_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_user)
 
-        # Snowflake account
-        sizer.Add(wx.StaticText(panel, label="Snowflake Account"), 0, wx.ALL, 5)
-        self.snowflake_account_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_account", ""))
-        sizer.Add(self.snowflake_account_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.snowflake_account_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_account)
+            # Snowflake account
+            sizer.Add(wx.StaticText(panel, label="Snowflake Account"), 0, wx.ALL, 5)
+            self.snowflake_account_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_account", ""))
+            sizer.Add(self.snowflake_account_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.snowflake_account_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_account)
 
-        # Snowflake warehouse
-        sizer.Add(wx.StaticText(panel, label="Snowflake Warehouse"), 0, wx.ALL, 5)
-        self.snowflake_warehouse_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_warehouse", ""))
-        sizer.Add(self.snowflake_warehouse_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.snowflake_warehouse_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_warehouse)
+            # Snowflake warehouse
+            sizer.Add(wx.StaticText(panel, label="Snowflake Warehouse"), 0, wx.ALL, 5)
+            self.snowflake_warehouse_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_warehouse", ""))
+            sizer.Add(self.snowflake_warehouse_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.snowflake_warehouse_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_warehouse)
 
-        # Snowflake database
-        sizer.Add(wx.StaticText(panel, label="Snowflake Database"), 0, wx.ALL, 5)
-        self.snowflake_database_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_database", ""))
-        sizer.Add(self.snowflake_database_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.snowflake_database_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_database)
+            # Snowflake database
+            sizer.Add(wx.StaticText(panel, label="Snowflake Database"), 0, wx.ALL, 5)
+            self.snowflake_database_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_database", ""))
+            sizer.Add(self.snowflake_database_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.snowflake_database_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_database)
 
-        # Snowflake schema
-        sizer.Add(wx.StaticText(panel, label="Snowflake Schema"), 0, wx.ALL, 5)
-        self.snowflake_schema_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_schema", ""))
-        sizer.Add(self.snowflake_schema_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.snowflake_schema_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_schema)
+            # Snowflake schema
+            sizer.Add(wx.StaticText(panel, label="Snowflake Schema"), 0, wx.ALL, 5)
+            self.snowflake_schema_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_schema", ""))
+            sizer.Add(self.snowflake_schema_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.snowflake_schema_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_schema)
 
-        # Snowflake role
-        sizer.Add(wx.StaticText(panel, label="Snowflake Role"), 0, wx.ALL, 5)
-        self.snowflake_role_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_role", ""))
-        sizer.Add(self.snowflake_role_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.snowflake_role_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_role)
+            # Snowflake role
+            sizer.Add(wx.StaticText(panel, label="Snowflake Role"), 0, wx.ALL, 5)
+            self.snowflake_role_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_role", ""))
+            sizer.Add(self.snowflake_role_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.snowflake_role_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_role)
 
-        # Snowflake private key file
-        sizer.Add(wx.StaticText(panel, label="Snowflake Private Key File (Pfad)"), 0, wx.ALL, 5)
-        self.snowflake_private_key_file_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_private_key_file", ""))
-        sizer.Add(self.snowflake_private_key_file_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.snowflake_private_key_file_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_private_key_file)
+            # Snowflake private key file
+            sizer.Add(wx.StaticText(panel, label="Snowflake Private Key File (Pfad)"), 0, wx.ALL, 5)
+            self.snowflake_private_key_file_ctrl = wx.TextCtrl(panel, value=self.config.Read("snowflake_private_key_file", ""))
+            sizer.Add(self.snowflake_private_key_file_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.snowflake_private_key_file_ctrl.Bind(wx.EVT_TEXT, self.on_snowflake_private_key_file)
 
-        # Adding preference controls for MinIO
-        heading_minio = wx.StaticText(panel, label="MinIO Einstellungen")
-        font = heading_minio.GetFont()
-        font.PointSize += 2
-        heading_minio.SetFont(font)
-        sizer.Add(heading_minio, 0, wx.ALL, 5)
+        else:
+            # Adding preference controls for MinIO
+            heading_minio = wx.StaticText(panel, label="MinIO Einstellungen")
+            font = heading_minio.GetFont()
+            font.PointSize += 2
+            heading_minio.SetFont(font)
+            sizer.Add(heading_minio, 0, wx.ALL, 5)
 
-        # MinIO endpoint
-        sizer.Add(wx.StaticText(panel, label="MinIO Endpoint"), 0, wx.ALL, 5)
-        self.minio_endpoint_ctrl = wx.TextCtrl(panel, value=self.config.Read("minio_endpoint", "host.docker.internal:9000"))
-        sizer.Add(self.minio_endpoint_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.minio_endpoint_ctrl.Bind(wx.EVT_TEXT, self.on_minio_endpoint)
+            # MinIO endpoint
+            sizer.Add(wx.StaticText(panel, label="MinIO Endpoint"), 0, wx.ALL, 5)
+            self.minio_endpoint_ctrl = wx.TextCtrl(panel, value=self.config.Read("minio_endpoint", "host.docker.internal:9000"))
+            sizer.Add(self.minio_endpoint_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.minio_endpoint_ctrl.Bind(wx.EVT_TEXT, self.on_minio_endpoint)
 
-        # MinIO access key
-        sizer.Add(wx.StaticText(panel, label="MinIO Access Key"), 0, wx.ALL, 5)
-        self.minio_access_key_ctrl = wx.TextCtrl(panel, value=self.config.Read("minio_access_key", "<username>"))
-        sizer.Add(self.minio_access_key_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.minio_access_key_ctrl.Bind(wx.EVT_TEXT, self.on_minio_access_key)
+            # MinIO access key
+            sizer.Add(wx.StaticText(panel, label="MinIO Access Key"), 0, wx.ALL, 5)
+            self.minio_access_key_ctrl = wx.TextCtrl(panel, value=self.config.Read("minio_access_key", "<username>"))
+            sizer.Add(self.minio_access_key_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.minio_access_key_ctrl.Bind(wx.EVT_TEXT, self.on_minio_access_key)
 
-        # MinIO secret key
-        sizer.Add(wx.StaticText(panel, label="MinIO Secret Key"), 0, wx.ALL, 5)
-        self.minio_secret_key_ctrl = wx.TextCtrl(panel, value=self.config.Read("minio_secret_key", "<password>"), style=wx.TE_PASSWORD)
-        sizer.Add(self.minio_secret_key_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.minio_secret_key_ctrl.Bind(wx.EVT_TEXT, self.on_minio_secret_key)
+            # MinIO secret key
+            sizer.Add(wx.StaticText(panel, label="MinIO Secret Key"), 0, wx.ALL, 5)
+            self.minio_secret_key_ctrl = wx.TextCtrl(panel, value=self.config.Read("minio_secret_key", "<password>"), style=wx.TE_PASSWORD)
+            sizer.Add(self.minio_secret_key_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.minio_secret_key_ctrl.Bind(wx.EVT_TEXT, self.on_minio_secret_key)
 
-        # MinIO secure (http/https)
-        sizer.Add(wx.StaticText(panel, label="MinIO Secure (HTTPS aktivieren)"), 0, wx.ALL, 5)
-        self.minio_secure_checkbox = wx.CheckBox(panel, label="HTTPS verwenden")
-        self.minio_secure_checkbox.SetValue(self.config.ReadBool("minio_secure", False))
-        sizer.Add(self.minio_secure_checkbox, 0, wx.ALL, 5)
-        self.minio_secure_checkbox.Bind(wx.EVT_CHECKBOX, self.on_minio_secure)
+            # MinIO secure (http/https)
+            sizer.Add(wx.StaticText(panel, label="MinIO Secure (HTTPS aktivieren)"), 0, wx.ALL, 5)
+            self.minio_secure_checkbox = wx.CheckBox(panel, label="HTTPS verwenden")
+            self.minio_secure_checkbox.SetValue(self.config.ReadBool("minio_secure", False))
+            sizer.Add(self.minio_secure_checkbox, 0, wx.ALL, 5)
+            self.minio_secure_checkbox.Bind(wx.EVT_CHECKBOX, self.on_minio_secure)
 
-        # MinIO bucket name
-        sizer.Add(wx.StaticText(panel, label="MinIO Bucket Name"), 0, wx.ALL, 5)
-        self.minio_bucket_name_ctrl = wx.TextCtrl(panel, value=self.config.Read("minio_bucket_name", "<bucketname>"))
-        sizer.Add(self.minio_bucket_name_ctrl, 0, wx.ALL | wx.EXPAND, 5)
-        self.minio_bucket_name_ctrl.Bind(wx.EVT_TEXT, self.on_minio_bucket_name)
+            # MinIO bucket name
+            sizer.Add(wx.StaticText(panel, label="MinIO Bucket Name"), 0, wx.ALL, 5)
+            self.minio_bucket_name_ctrl = wx.TextCtrl(panel, value=self.config.Read("minio_bucket_name", "<bucketname>"))
+            sizer.Add(self.minio_bucket_name_ctrl, 0, wx.ALL | wx.EXPAND, 5)
+            self.minio_bucket_name_ctrl.Bind(wx.EVT_TEXT, self.on_minio_bucket_name)
 
         # Adding Streamlit app preferences
         heading_streamlit = wx.StaticText(panel, label="Streamlit")
