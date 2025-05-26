@@ -14,4 +14,10 @@ x11vnc -display :$DISPLAY_NUM -forever -nopw -shared -bg
 novnc_proxy --vnc localhost:5900 --listen 6080 &
 
 # Starting Phoenix app (compiled version)
-exec ./dist/BenBox/BenBox
+while true; do
+    echo "Starting BenBox Phoenix app..."
+    exec /home/ben/BenBox/dist/BenBox/BenBox
+
+    echo "BenBox Phoenix app exited. Restarting in 3 seconds..."
+    sleep 3
+done

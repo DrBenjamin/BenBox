@@ -97,4 +97,4 @@ RUN curl -sSL https://dl.min.io/client/mc/release/linux-amd64/mc \
 
 ENV PATH="$PATH:/home/ben/minio-binaries"
 
-ENTRYPOINT ["/bin/bash", "/home/ben/BenBox/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/home/ben/BenBox/scripts/entrypoint.sh"]
