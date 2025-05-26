@@ -30,10 +30,9 @@ package.json
 .vscode/settings.json
 .conda/*
 Export_Dateiliste.docx
-BenBox.exe
-BenBox.app
+build/*
+dist/*
 _internal/*
-BenBox
 PROJECT.pdf
 
 # dbt artifacts and secrets
@@ -47,4 +46,4 @@ profiles.yml
 .env
 
 # dbt secrets
-.dbt/profiles.yml
+benbox/.dbt/*
