@@ -69,7 +69,7 @@ RUN python -m pip install --upgrade pip && \
 
 # Copying the rest of the repo (after env is built)
 COPY --chown=ben:ben . /home/ben/BenBox
-RUN chmod 750 /home/ben/BenBox/entrypoint.sh
+RUN chmod 750 /home/ben/BenBox/scripts/entrypoint.sh
 
 # Building the BenBox app using PyInstaller (inside conda env)
 RUN conda run -n BenBox python -m PyInstaller --noconfirm --clean BenBox.py
