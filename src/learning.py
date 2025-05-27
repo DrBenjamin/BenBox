@@ -7,7 +7,7 @@ import wx
 import src.globals as g
 import subprocess
 from minio.error import S3Error
-from src.minio_utils import (
+from src.server.minio_utils import (
     connect_to_minio,
     upload_files
 )

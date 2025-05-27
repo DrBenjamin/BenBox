@@ -11,12 +11,12 @@ import subprocess
 import platform
 import src.globals as g
 from minio.error import S3Error
-from src.minio_utils import (
+from src.server.minio_utils import (
     connect_to_minio,
     upload_files,
     delete_object_from_bucket
 )
-from src.snowflake_utils import (
+from src.server.snowflake_utils import (
     connect_to_snowflake,
     upload_files_to_stage,
     download_file_from_stage,

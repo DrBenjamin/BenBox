@@ -4,7 +4,6 @@ import { CommonModule } from '@angular/common';
 import { AnalyticsService } from './services/analytics.service';
 import { PerformanceMonitorService } from './services/performance-monitor.service';
 import { AppMonitoringService } from './services/app-monitoring.service';
-import { MetricsDashboardComponent } from './components/metrics-dashboard.component';
 
 @Component({
   selector: 'app-root',
@@ -25,6 +24,10 @@ export class AppComponent implements OnInit {
   isLoading = false;
   isMobile = false;
   screenWidth = 0;
+  
+  // VNC interaction properties
+  isVncInteractive = true;
+  vncBaseUrl = 'http://212.227.102.172:6080/vnc.html';
   
   // Touch interaction properties
   touchStartX = 0;
@@ -205,6 +208,170 @@ export class AppComponent implements OnInit {
         `query-${query}-end`
       );
     }, 500);
+  }
+
+  // Loading BenBox desktop application
+  loadBenBox(): void {
+    console.log('🚀 Starting BenBox Desktop app...');
+    this.isLoading = true;
+    
+    this.performanceMonitor.markPerformance('benbox-start');
+    
+    // Track button click with mobile context
+    this.analytics.trackButtonClick('BenBox Desktop', {
+      feature: 'benbox_desktop',
+      isMobile: this.isMobile,
+      screenWidth: this.screenWidth
+    });
+    
+    // Mobile-specific loading timeout
+    const loadingTimeout = this.isMobile ? 2000 : 1500;
+    
+    setTimeout(() => {
+      this.isLoading = false;
+      console.log('⏰ Loading timeout finished, isLoading set to false');
+    }, loadingTimeout);
+
+    // Testing VNC connection first for mobile devices
+    if (this.isMobile) {
+      console.log('📱 Mobile device detected, testing VNC connection...');
+      this.testVncConnection();
+    }
+
+    const viewOnlyParam = this.isVncInteractive ? '0' : '1';
+    const mobileOptimizations = this.optimizeVncForMobile();
+    const url = `${this.vncBaseUrl}?view_only=${viewOnlyParam}&autoconnect=1&reconnect=1&reconnect_delay=2000${mobileOptimizations}`;
+    console.log('🔗 Loading BenBox VNC URL with mouse interaction:', this.isVncInteractive ? 'enabled' : 'disabled', url);
+    
+    // Store sanitized URL for iframe
+    try {
+      this.urlSafe = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+      console.log('✅ URL sanitization successful for BenBox VNC');
+      console.log('🔒 urlSafe created:', this.urlSafe);
+    } catch (error) {
+      console.error('❌ URL sanitization failed for BenBox VNC:', error);
+    }
+    
+    this.buttonsVisible = false;
+    console.log('👁️ Set buttonsVisible to false, BenBox VNC iframe should now be visible');
+    
+    // Force change detection
+    setTimeout(() => {
+      console.log('🔄 Checking state after 100ms:');
+      console.log('  - buttonsVisible:', this.buttonsVisible);
+      console.log('  - urlSafe exists:', !!this.urlSafe);
+      console.log('  - urlSafe value:', this.urlSafe);
+    }, 100);
+    
+    // Track iframe load
+    this.analytics.trackIframeLoad(url, -1); // Using -1 for BenBox desktop app
+    
+    // Measure BenBox load time after a brief delay
+    setTimeout(() => {
+      this.performanceMonitor.markPerformance('benbox-end');
+      this.performanceMonitor.measurePerformance(
+        'benbox-load-time', 
+        'benbox-start', 
+        'benbox-end'
+      );
+    }, 500);
+  }
+
+  // Mobile-specific VNC optimization
+  optimizeVncForMobile(): string {
+    if (this.isMobile) {
+      console.log('📱 Applying mobile optimizations for VNC');
+      // On mobile, enable touch events and gestures
+      const mobileParams = '&show_dot=1&view_clip=0&resize=remote&quality=6&compression=2';
+      return mobileParams;
+    }
+    return '';
+  }
+
+  // Adding VNC connection test method
+  testVncConnection(): void {
+    console.log('🔍 Testing VNC server connection...');
+    const testUrl = 'http://212.227.102.172:6080';
+    
+    fetch(testUrl)
+      .then(response => {
+        console.log('🔗 VNC server test response:', response.status, response.statusText);
+        if (response.ok) {
+          console.log('✅ VNC server is reachable!');
+        } else {
+          console.warn('⚠️ VNC server returned non-OK status:', response.status);
+        }
+      })
+      .catch(error => {
+        console.error('❌ VNC server connection failed:', error);
+        console.log('💡 This might be expected due to CORS, but indicates connection issues');
+      });
+  }
+
+  // Adding VNC troubleshooting method
+  troubleshootVnc(): void {
+    console.log('🔍 Running VNC troubleshooting...');
+    
+    // Check if we're on the correct network
+    console.log('🌐 Current location:', window.location.href);
+    console.log('📱 Mobile device:', this.isMobile);
+    console.log('📏 Screen dimensions:', this.screenWidth + 'x' + window.innerHeight);
+    
+    // Test basic connectivity
+    const vncUrl = 'http://212.227.102.172:6080';
+    console.log('🔗 Testing VNC endpoint:', vncUrl);
+    
+    // Try to fetch the VNC page
+    fetch(vncUrl + '/vnc.html')
+      .then(response => {
+        if (response.ok) {
+          console.log('✅ VNC HTML page is accessible');
+          return response.text();
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      })
+      .then(html => {
+        if (html.includes('noVNC')) {
+          console.log('✅ noVNC application is properly served');
+        } else {
+          console.warn('⚠️ VNC page loaded but may not contain noVNC application');
+        }
+      })
+      .catch(error => {
+        console.error('❌ VNC troubleshooting failed:', error);
+        console.log('💡 Possible issues:');
+        console.log('   - VNC server is not running');
+        console.log('   - Network connectivity issues');
+        console.log('   - CORS policy blocking the request');
+        console.log('   - Server IP address may have changed');
+      });
+  }
+
+  // Toggle VNC interaction mode
+  toggleVncInteraction(): void {
+    this.isVncInteractive = !this.isVncInteractive;
+    console.log('🖱️ VNC interaction toggled:', this.isVncInteractive ? 'enabled' : 'disabled');
+    
+    // Reload the VNC iframe with new interaction setting
+    if (this.urlSafe) {
+      const viewOnlyParam = this.isVncInteractive ? '0' : '1';
+      const mobileOptimizations = this.optimizeVncForMobile();
+      const newUrl = `${this.vncBaseUrl}?view_only=${viewOnlyParam}&autoconnect=1&reconnect=1&reconnect_delay=2000${mobileOptimizations}`;
+      
+      try {
+        this.urlSafe = this.sanitizer.bypassSecurityTrustResourceUrl(newUrl);
+        console.log('✅ VNC URL updated for interaction mode:', newUrl);
+        
+        // Track the interaction toggle
+        this.analytics.trackEvent('vnc_interaction_toggled', {
+          interactive: this.isVncInteractive,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('❌ Failed to update VNC URL for interaction toggle:', error);
+      }
+    }
   }
 
   // Navigation methods

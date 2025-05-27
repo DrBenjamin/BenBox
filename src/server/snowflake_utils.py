@@ -2,12 +2,11 @@
 ### Utility functions for Snowflake connection
 ### Open-Source, hosted on https://github.com/DrBenjamin/BenBox
 ### Please reach out to ben@seriousbenentertainment.org for any questions
-import streamlit as st
+import wx
 import os
 import snowflake.connector
-import logging
 from cryptography.hazmat.primitives import serialization
-
+import logging
 # Setting up logger
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ def connect_to_snowflake():
         return conn
     except Exception as e:
         logger.error(f"Error connecting to Snowflake: {e}")
-        st.error(f"Error connecting to Snowflake: {e}")
+        wx.MessageBox(f"Fehler beim Verbinden mit Snowflake: {e}", "Fehler", wx.OK | wx.ICON_ERROR)
         return None
 
 
@@ -40,13 +39,12 @@ def list_all_stages(conn):
     try:
         cursor = conn.cursor()
         cursor.execute("SHOW STAGES")
-        # The stage name is in the first column ("name"), and may need to be prefixed with '@'
         stages = [f"@{row[1]}" if not row[1].startswith("@") else row[1] for row in cursor.fetchall()]
         cursor.close()
         return stages
     except Exception as e:
         logger.error(f"Error listing stages: {e}")
-        st.error(f"Error listing stages: {e}")
+        wx.MessageBox(f"Fehler beim Auflisten der Stages: {e}", "Fehler", wx.OK | wx.ICON_ERROR)
         return []
 
 
@@ -72,7 +70,7 @@ def upload_files_to_stage(conn, stage_name, file_paths, overwrite=True):
         cursor.close()
     except Exception as e:
         logger.error(f"Error uploading to Snowflake Stage: {e}")
-        st.error(f"Error uploading to Snowflake Stage: {e}")
+        wx.MessageBox(f"Fehler beim Hochladen in Snowflake Stage: {e}", "Fehler", wx.OK | wx.ICON_ERROR)
 
 # Function to list files in a Snowflake stage
 def list_stage_files(conn, stage_name):
@@ -97,7 +95,7 @@ def list_stage_files(conn, stage_name):
         return files
     except Exception as e:
         logger.error(f"Error listing files in Snowflake Stage: {e}")
-        st.error(f"Error listing files in Snowflake Stage: {e}")
+        wx.MessageBox(f"Fehler beim Auflisten der Dateien in Snowflake Stage: {e}", "Fehler", wx.OK | wx.ICON_ERROR)
         return []
 
 
@@ -120,7 +118,7 @@ def download_file_from_stage(conn, stage_name, file_name, local_path):
         cursor.close()
     except Exception as e:
         logger.error(f"Error downloading from Snowflake Stage: {e}")
-        st.error(f"Error downloading from Snowflake Stage: {e}")
+        wx.MessageBox(f"Fehler beim Herunterladen aus Snowflake Stage: {e}", "Fehler", wx.OK | wx.ICON_ERROR)
 
 
 # Function to delete a file from a Snowflake stage
@@ -141,4 +139,4 @@ def delete_file_from_stage(conn, stage_name, file_name):
         cursor.close()
     except Exception as e:
         logger.error(f"Error deleting from Snowflake Stage: {e}")
-        st.error(f"Error deleting from Snowflake Stage: {e}")
+        wx.MessageBox(f"Fehler beim Löschen aus Snowflake Stage: {e}", "Fehler", wx.OK | wx.ICON_ERROR)

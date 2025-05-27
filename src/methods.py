@@ -7,11 +7,12 @@ import wx
 import webbrowser
 import src.globals as g
 import re
-from src.minio_utils import (
+from src.server.minio_utils import (
     connect_to_minio,
-    list_buckets
+    list_buckets,
+    list_objects
 )
-from src.snowflake_utils import (
+from src.server.snowflake_utils import (
     connect_to_snowflake,
     list_all_stages
 )
@@ -98,7 +99,6 @@ def refresh_ctrls(self, select_bucket_name=None):
                 target_bucket = buckets[0]
 
             if buckets:
-                g.elearnin,g_index = selected_idx
                 g.minio_bucket_name = target_bucket
                 self.learning_ctrl.SetItemState(
                     selected_idx,
@@ -143,7 +143,6 @@ def on_learning_ctrl_selected(self, event):
     files_combined = []
     minio_client = None
     try:
-        from src.minio_utils import list_objects
         minio_client = connect_to_minio()
     except Exception:
         pass
