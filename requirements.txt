@@ -1,4 +1,3 @@
-wxpython
 mcp
 fastmcp
 pyinstaller
