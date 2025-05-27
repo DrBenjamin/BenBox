@@ -14,6 +14,12 @@ an SSE-based server and clients can be decoupled processes
 "cloud-native" use-cases compared to the STDIO-based pattern where the client
 itself spawns the server as a subprocess.
 
+**Features:**
+- Azure OpenAI agent integration with remote MCP tools
+- Seamless connection to remote MCP services via OpenAPI
+- Multi-agent communication with specialized tool access
+- Secure remote tool execution without additional authentication overhead
+
 ## Setup
 
 Install the required packages and the MCP server and client:

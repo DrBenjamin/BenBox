@@ -135,7 +135,14 @@
    and challenges. Based on these findings, a proof-of-concept multi agent prototype, as
    described by Desai & Follow (2025), will be developed to demonstrate core functionality
    such as the recording and retrieval of educational content, image and video recognition
-   and voice mode of the app. This prototype will be tested in a clinical pilot to assess its
+   and voice mode of the app. 
+   
+   The system leverages Azure OpenAI agents that can connect to remotely hosted MCP tools via
+   OpenAPI specifications, allowing for flexible integration with various tool providers without
+   requiring local deployment. This architecture enables seamless scaling and extension of agent
+   capabilities through the addition of new remote tools.
+   
+   This prototype will be tested in a clinical pilot to assess its
    practical value and feasibility of integration, with user feedback guiding the necessary
    improvements. Continuous iteration will ensure that the solution remains relevant and
    effective and can be adapted to changing requirements.
