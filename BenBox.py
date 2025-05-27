@@ -5,7 +5,19 @@
 # Modules
 import wx  # wxPython / Phoenix
 import src.globals as g
+import sys
 import types
+import os
+# Setting sys.modules to bypass src.server __init__.py for Phoenix app
+server_mod = types.ModuleType('src.server')
+# Setting __path__ to the actual directory so submodules can be found
+server_mod.__path__ = [
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "src", "server"
+    )
+]
+sys.modules['src.server'] = server_mod
 import logging
 from src.preferences import on_preferences
 from src.files import (

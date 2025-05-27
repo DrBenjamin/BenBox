@@ -13,7 +13,7 @@ RUN apt-get update && \
     libxmlsec1-dev libffi-dev liblzma-dev net-tools netcat-openbsd software-properties-common \
     libgtk-3-dev libgtk2.0-dev libgdk-pixbuf2.0-dev libgl1-mesa-dev \
     freeglut3-dev libsm-dev libxrender-dev libxext-dev libxtst-dev libjpeg-dev libtiff-dev \
-    libpng-dev libnotify-dev libsdl1.2-dev pkg-config \
+    libpng-dev libnotify-dev libsdl1.2-dev libsdl2-dev libsdl2-2.0-0 pkg-config \
     libwebkit2gtk-4.0-dev novnc xdg-utils epiphany-browser w3m && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 

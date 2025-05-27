@@ -1,9 +1,33 @@
 import sys
 import os
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files, collect_dynamic_libs, copy_metadata
+datas = []
+datas += copy_metadata('streamlit')
 
 # Collect all submodules from your src package
 hiddenimports = collect_submodules('src')
+
+# Collect wxPython dynamic libraries including SDL2
+wx_binaries = []
+try:
+    # Adding wxPython dynamic libraries
+    wx_binaries.extend(collect_dynamic_libs('wx'))
+    
+    # Adding SDL2 libraries specifically for macOS
+    if sys.platform == 'darwin':
+        import subprocess
+        brew_prefix = subprocess.check_output(['brew', '--prefix']).decode().strip()
+        # Adding the specific SDL2 libraries we found
+        sdl_paths = [
+            os.path.join(brew_prefix, 'lib/libSDL2-2.0.0.dylib'),
+            os.path.join(brew_prefix, 'lib/libSDL2.dylib'),
+        ]
+        for sdl_path in sdl_paths:
+            if os.path.exists(sdl_path):
+                wx_binaries.append((sdl_path, '.'))
+                print(f"Adding SDL2 library: {sdl_path}")
+except Exception as e:
+    print(f"Warning: Could not collect binaries: {e}")
 
 # Collect data files (e.g., images) from the Images directory
 datas = [
@@ -15,7 +39,7 @@ block_cipher = None
 a = Analysis(
     ['BenBox.py'],
     pathex=['.'],
-    binaries=[],
+    binaries=wx_binaries,
     datas=datas,
     hiddenimports=[
         'mcp',
@@ -25,8 +49,11 @@ a = Analysis(
         'mcp.types'
     ],
     hookspath=[],
-    runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'mysql',
+        'mysql.vendor',
+        'streamlit',
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
