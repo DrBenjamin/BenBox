@@ -2,6 +2,7 @@
 ### VectorStore class for Snowflake
 ### Open-Source, hosted on https://github.com/DrBenjamin/BenBox
 ### Please reach out to ben@seriousbenentertainment.org for any questions
+from __future__ import annotations
 import streamlit as st
 import hashlib
 import json
@@ -9,7 +10,6 @@ import logging
 import warnings
 import os
 from typing import Any, Iterable, List, Optional, Tuple, Type
-from __future__ import annotations
 from snowflake.snowpark import Session
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
