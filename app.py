@@ -267,7 +267,8 @@ if not st.session_state["IS_EMBED"]:
             "💻 Review Code",
             "🩻 Image Recognition",
             "❄️ Navigator",
-            "🤖 OpenAI Agents"
+            "🤖 OpenAI Agents",
+            "🕹️ BenBox"
         ),
         index=st.session_state.query if st.session_state.query else 0,
     )
@@ -284,6 +285,10 @@ else:
         func_choice = "🩻 Image Recognition"
     elif st.session_state.query == 5:
         func_choice = "❄️ Navigator"
+    elif st.session_state.query == 6:
+        func_choice = "🤖 OpenAI Agents"
+    elif st.session_state.query == 7:
+        func_choice = "🕹️ BenBox"
     else:
         func_choice = "🤖 OpenAI Agents"
 
@@ -969,3 +974,13 @@ elif func_choice == "🤖 OpenAI Agents":
         st.json([msg.as_dict() for msg in messages1.text_messages])
         st.subheader("Agent 2 Response")
         st.json([msg.as_dict() for msg in messages2.text_messages])
+
+elif func_choice == "🕹️ BenBox":
+    # Showing embed iframe on `212.227.102.172:6080?autoconnect=1`
+    st.title("🕹️ BenBox")
+    st.markdown(
+        """
+        <iframe src="http://212.227.102.172:6080?autoconnect=1" width="100%" height="600px"></iframe>
+        """,
+        unsafe_allow_html=True
+    )
