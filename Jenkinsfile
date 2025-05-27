@@ -1,9 +1,21 @@
 pipeline {
 
     agent any
+    
+    parameters {
+        booleanParam(
+            name: 'FULL_CLEANUP',
+            defaultValue: false,
+            description: 'Perform full Docker system cleanup (slower but frees more space)'
+        )
+    }
 
     environment {
-        PATH = "$PATH:/usr/local/bin:/opt/homebrew/Caskroom/miniconda/base/bin/"
+        PATH = "$PATH:/usr/local/bin:/usr/bin:/bin:$HOME/miniforge3/bin:$HOME/miniforge3/condabin"
+
+        // Enabling Docker BuildKit for faster builds and caching
+        DOCKER_BUILDKIT = '1'
+        COMPOSE_DOCKER_CLI_BUILD = '1'
 
         // Setting environment variables for MinIO (set in Jenkins credentials)
         MINIO_ENDPOINT = credentials('MINIO_ENDPOINT')
@@ -53,14 +65,62 @@ pipeline {
                 // Using local repo and building docker image and deploying
                 sh '''
                     cd /home/jenkins/BenBox
-                    docker-compose -f docker-compose.yml down --remove-orphans
-                    docker image prune -fa
-                    docker system prune -af
-                    docker volume prune -f
-                    docker-compose -f docker-compose.yml build --no-cache
-                    docker-compose -f docker-compose.yml --project-name benbox up -d
+                    
+                    # Stopping current containers with build-specific project name
+                    docker-compose -f docker-compose.yml --project-name benbox-${BUILD_NUMBER} down --remove-orphans
+
+                    # Smart cleanup - only removing build-specific artifacts and dangling images
+                    docker container prune -f --filter "until=1h"
+                    docker image prune -f
+
+                    # Building with cache support (no --no-cache for faster builds)
+                    docker-compose -f docker-compose.yml --project-name benbox-${BUILD_NUMBER} build
+
+                    # Deploying with build-specific project name
+                    docker-compose -f docker-compose.yml --project-name benbox-${BUILD_NUMBER} up -d
                 '''
             }
+        }
+
+        stage('Full Cleanup') {
+            when {
+                anyOf {
+                    // Only full cleanup on scheduled builds or when manually triggered
+                    triggeredBy 'TimerTrigger'
+                    expression { params.FULL_CLEANUP == true }
+                }
+            }
+            steps {
+                sh '''
+                    cd /home/jenkins/BenBox
+                    # Full system cleanup only when needed
+                    docker system prune -af --volumes
+                    docker volume prune -f
+                '''
+            }
+        }
+    }
+    
+    post {
+        always {
+            script {
+                // Cleaning up build-specific containers after build completion
+                sh '''
+                    # Removing containers from this specific build
+                    docker-compose -f /home/jenkins/BenBox/docker-compose.yml --project-name benbox-${BUILD_NUMBER} down --volumes --remove-orphans || true
+                    
+                    # Removing any dangling images created during this build
+                    docker image prune -f || true
+                '''
+            }
+        }
+
+        success {
+            echo 'Build completed successfully!'
+        }
+
+        failure {
+            echo 'Build failed. Check logs for details.'
         }
     }
 }

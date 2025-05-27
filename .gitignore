@@ -47,3 +47,4 @@ profiles.yml
 
 # dbt secrets
 benbox/.dbt/*
+.jenkins
