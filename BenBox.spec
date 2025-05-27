@@ -17,7 +17,13 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=datas,
-    hiddenimports=hiddenimports,
+    hiddenimports=[
+        'mcp',
+        'mcp.server',
+        'mcp.server.fastmcp',
+        'mcp.server.models',
+        'mcp.types'
+    ],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],

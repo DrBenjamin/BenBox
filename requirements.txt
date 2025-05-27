@@ -1,3 +1,6 @@
+wxpython
+mcp
+fastmcp
 pyinstaller
 pandas
 xlsxwriter
