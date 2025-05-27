@@ -108,9 +108,6 @@ pipeline {
             script {
                 // Cleaning up build-specific containers after build completion
                 sh '''
-                    # Removing containers from this specific build
-                    docker-compose -f /home/jenkins/BenBox/docker-compose.yml --project-name benbox-${BUILD_NUMBER} down --volumes --remove-orphans || true
-                    
                     # Removing any dangling images created during this build
                     docker image prune -f || true
                 '''
