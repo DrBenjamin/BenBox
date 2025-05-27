@@ -36,7 +36,7 @@ from langchain_community.chat_message_histories import StreamlitChatMessageHisto
 from langchain_community.document_loaders import Docx2txtLoader, CSVLoader, PyPDFLoader, TextLoader, WebBaseLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from typing import List
-from src.server.minio import (
+from src.server.minio_utils import (
     list_buckets,
     get_minio_client,
     list_objects
