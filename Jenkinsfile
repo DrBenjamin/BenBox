@@ -67,6 +67,8 @@ pipeline {
                     cd /home/jenkins/BenBox
                     
                     # Stopping current containers with build-specific project name
+                    docker stop benbox streamlit mcp
+                    docker rm benbox streamlit mcp
                     docker-compose -f docker-compose.yml --project-name benbox-${BUILD_NUMBER} down --remove-orphans
 
                     # Smart cleanup - only removing build-specific artifacts and dangling images

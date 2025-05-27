@@ -64,7 +64,7 @@ ENV PATH="/opt/conda/envs/BenBox/bin:$PATH"
 
 # Installing wxPython and PyInstaller only for desktop app
 RUN python -m pip install --upgrade pip && \
-    python -m pip install --no-cache-dir "wxPython==4.2.2" && \
+    python -m pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04 wxPython && \
     python -m pip install --no-cache-dir pyinstaller
 
 # Copying the rest of the repo (after env is built)
