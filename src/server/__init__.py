@@ -25,5 +25,3 @@ from . import review_code
 from . import image_recognition
 from . import get_country_name
 from . import rag_on_snow
-from . import minio
-from . import snowflake_utils

@@ -14,7 +14,7 @@ app = importlib.import_module('app')
 
 def test_session_state_defaults():
     """Test that session state keys are set with default values."""
-    # Simulate Streamlit session state
+    # Simulating Streamlit session state
     keys = [
         "answer", "response", "option_offline_resources", "option_embedding_model",
         "option_vector_length", "IS_EMBED"
