@@ -212,7 +212,10 @@ def call_snowflake_mcp_tool(tool_name: str, params: dict = {}) -> dict:
         return json.loads(str(content))
     except Exception as e:
         logging.error(f"Error calling Snowflake MCP tool {tool_name}: {e}")
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error", 
+            "message": f"Fehler beim Aufrufen des Snowflake MCP Tools {tool_name}: {str(e)}"
+        }
 
 
 # Function to list all files one level up and open them
@@ -857,6 +860,8 @@ elif func_choice == "❄️ Navigator":
     else:
         if selected_disp == "Erstelle neue Tabelle":
             st.info("Bitte integriere zuerst Dokumente, um eine Vektorbank zu erstellen.")
+        else:
+            st.info("Verbindung zum Vektorspeicher wird hergestellt...")
 
 elif func_choice == "🤖 OpenAI Agents":
     if not st.session_state["IS_EMBED"]:
