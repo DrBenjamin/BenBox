@@ -11,6 +11,9 @@ snowflake
 snowflake-connector-python
 snowflake-snowpark-python
 snowflake[ml]
+langchain
+langchain_community
+langchain_core
 starlette
 uvicorn
 httpx
