@@ -7,6 +7,10 @@ azure-ai-projects
 azure-identity
 mysql-connector-python
 cryptography
+snowflake  
+snowflake-connector-python
+snowflake-snowpark-python
+snowflake[ml]
 starlette
 uvicorn
 httpx
