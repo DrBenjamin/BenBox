@@ -735,7 +735,7 @@ elif func_choice == "❄️ Navigator":
 
     # Connecting to existing vector store(s) if one or multi tables are selected (and not creating a new table)
     if 'vector' not in st.session_state and selected_disp != "Erstelle neue Tabelle":
-        # Mark that we're using the MCP tool for vector store access
+        # Marking that we're using the MCP tool for vector store access
         st.session_state.vector = "mcp_vector_store"
 
     # Creating the chat interface
@@ -784,7 +784,7 @@ elif func_choice == "❄️ Navigator":
                         "context": []
                     }
                     
-                    # Convert context from JSON to document format
+                    # Converting context from JSON to document format
                     for doc_result in rag_response.get("context", []):
                         doc = Document(
                             page_content=doc_result.get("content", ""),
@@ -794,11 +794,11 @@ elif func_choice == "❄️ Navigator":
                     
                     st.session_state.answer = answer
                     
-                    # Add the answer to chat history
+                    # Adding the answer to chat history
                     msgs.add_user_message(user_input)
                     msgs.add_ai_message(answer)
                     
-                    # Display the answer with processing time
+                    # Displaying the answer with processing time
                     processing_time = int(time.time() - st.session_state.start)
                     st.chat_message("ai").markdown(
                         f"```\n{answer}\n```\n\n_(verarbeitet in {processing_time} Sekunden)_"

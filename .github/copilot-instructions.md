@@ -14,37 +14,39 @@ The agent system uses the approaches from:
 **The backend:**
 
 A Streamlit app that serves as a client to
-the MCP server tools. It has an inbuild RAG (retrieval-augmented generation)
-system to store and retrieve documents as vectors for similarity search.
+the MCP server tools.
+It has various inbuild tools, for instance a RAG (retrieval-augmented generation)
+system offers several tools to store and retrieve documents as vectors for
+similarity search.
 
 **The frontend is a two-part system:**
 
-1. An Angular mobile app is also included which utilizes the Streamlit client
-application (as iframe embedded) and collects app metrics.
+1. An Angular web/mobile app is included which utilizes the Streamlit
+and the Phoenix apps (embedded iframe) and collects app metrics.
 
-2. A desktop app which manages the files and works with Cloud blob storage.
-It can be run locally or in the cloud.
+2. A standalone desktop app (can also be used via Angular app as embedded VNC)
+which manages the files and works with Cloud blob storage.
 
 **DevOps/DataOps:**
 
-The project includes DevOps and DataOps tools for
+The project includes DevOps and DataOps tools and configuration for
 - Docker: [docker-compose.yml](#file:docker-compose.yml), [Dockerfile](#file:Dockerfile), [Dockerfile_Streamlit](#file:Dockerfile_Streamlit), 
-  [Dockerfile_MCP](#file:Dockerfile_MCP)
-- Jenkins: [Jenkinsfile](#file:Jenkinsfile)
-- Pytest: [tests/test_app.py](#file:tests/test_app.py)
-- dbt: [dbt_project.yml](#file:dbt_project.yml)
+  [Dockerfile_MCP](#file:Dockerfile_MCP).
+- Jenkins: [Jenkinsfile](#file:Jenkinsfile).
+- Pytest: [tests/test_app.py](#file:tests/test_app.py).
+- dbt: [benbox/.dbt/dbt_project.yml](#file:benbox/.dbt/dbt_project.yml).
 
 When generating code snippets or explanations, please follow these guidelines:
 
 1. Output always in Markdown.
 2. When referring to a file in this repo, link using `#file:<relative_path>`.
-   - Angular mobile app: [src/app/app.components.ts](#file:src/app/app.components.ts)
-   - Phoenix desktop app: [BenBox.py](#file:BenBox.py)
-   - Streamlit client app: [app.py](#file:app.py)
-   - MCPClient class: [src/client.py](#file:src/client.py)
-   - MCP server [src/server.py](#file:src/server.py)
-   - MCP server tools: [src/server/*](#file:src/server/*)
-   - Assets folder: [src/assets/*](#file:src/assets/*)
+   - Angular mobile app: [src/app/app.components.ts](#file:src/app/app.components.ts).
+   - Phoenix desktop app: [BenBox.py](#file:BenBox.py).
+   - Streamlit client app: [app.py](#file:app.py).
+   - MCPClient class: [src/client.py](#file:src/client.py).
+   - MCP server [src/server.py](#file:src/server.py).
+   - MCP server tools: [src/server/*](#file:src/server/*).
+   - Assets folder: [src/assets/*](#file:src/assets/*).
 3. Code‑block format for changes or new files:
    ````python
    // filepath: #file:<relative_path>
@@ -53,24 +55,27 @@ When generating code snippets or explanations, please follow these guidelines:
        ...
    # ...existing code...
    ````
-4. Comments format:
-   - Use `#` for comments
+4. Comments and code formatting rules:
+   - Always import modules at the top of the file.
+   - Use `#` for comments.
    - Start comments with 'Setting', 'Creating', 'Adding', 'Updating' etc.
      (always the gerund form) and before it add an empty line if not the
      beginning of a code block or function.
+   - empty lines between functions use 2 lines empty lines and don't fill
+     empty lines with spaces.
 5. Adhere to PEP 8:
-   - 4‑space indentation, snake_case names
-   - Imports at the top of the file
-   - Docstrings in Google or NumPy style
+   - 4‑space indentation, snake_case names.
+   - Imports at the top of the file.
+   - Docstrings in Google or NumPy style.
 6. Preserve existing patterns:
    - Use `@st.cache_resource` for expensive initializations
-   - Store and retrieve state via `st.session_state.get("key", default)`
+   - Store and retrieve state via `st.session_state.get("key", default)`.
 7. File I/O:
-   - Use `os.path.join(...)` and `os.makedirs(..., exist_ok=True)`
-   - Handle missing directories before writing files
+   - Use `os.path.join(...)` and `os.makedirs(..., exist_ok=True)`.
+   - Handle missing directories before writing files.
 8. Error handling & logging:
-   - Import and configure `logger = logging.getLogger(__name__)`
-   - Raise clear exceptions on invalid inputs
+   - Import and configure `logger = logging.getLogger(__name__)`.
+   - Raise clear exceptions on invalid inputs.
 9. Testing:
-   - Add or update tests under `tests/`
-   - Use `pytest` fixtures to mock `st.session_state`
+   - Add or update tests under `tests/`.
+   - Use `pytest` fixtures to mock `st.session_state`.
