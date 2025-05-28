@@ -21,16 +21,8 @@ import asyncio
 from typing import List, Union
 from PIL import Image
 from src.client import MCPClient
-from src.server.snowrag.vectorstores import SnowflakeVectorStore
-from src.server.snowrag.llms import Cortex
-from src.server.snowrag.embedding import SnowflakeEmbeddings
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.chains import create_retrieval_chain
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.runnables import RunnableLambda
 from langchain_core.documents import Document
 from langchain_community.chat_message_histories import StreamlitChatMessageHistory
 from langchain_community.document_loaders import Docx2txtLoader, CSVLoader, PyPDFLoader, TextLoader, WebBaseLoader
@@ -41,12 +33,8 @@ from src.server.minio_utils import (
     get_minio_client,
     list_objects
 )
-from src.server.snowrag.snowrag import (
-    create_session,
-    fetch_tables_with_retry,
-    drop_table_with_retry,
-    _reset_vector_store
-)
+from src.server.snowrag.snowrag import _reset_vector_store
+
 logging.basicConfig(stream=sys.stdout, level=logging.WARNING)
 logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -203,6 +191,31 @@ def call_mcp_generic(input: str, params: dict={}) -> str:
 
     # Fallback to string representation
     return str(execution)
+
+
+def call_snowflake_mcp_tool(tool_name: str, params: dict = {}) -> dict:
+    """Calling the Snowflake MCP tool and parsing the JSON response."""
+    async def _invoke():
+        result = await _mcp_client.session.call_tool(tool_name, params)
+        return result
+    
+    try:
+        execution = asyncio.run_coroutine_threadsafe(_invoke(), _mcp_loop).result()
+        content = execution.content
+        
+        # Extract JSON from the first TextContent in the response
+        if isinstance(content, (list, tuple)) and len(content) > 0:
+            text_obj = content[0]
+            json_str = getattr(text_obj, 'text', text_obj)
+            return json.loads(json_str)
+        
+        return json.loads(str(content))
+    except Exception as e:
+        logging.error(f"Error calling Snowflake MCP tool {tool_name}: {e}")
+        return {
+            "status": "error", 
+            "message": f"Fehler beim Aufrufen des Snowflake MCP Tools {tool_name}: {str(e)}"
+        }
 
 
 # Function to list all files one level up and open them
@@ -383,28 +396,29 @@ elif func_choice == "🩻 Image Recognition":
         st.image(thumb, caption="Thumbnail", use_container_width=True)
 
 elif func_choice == "❄️ Navigator":
-    # Creating the Snowflake session
+    # Creating the Snowflake session via MCP tool
     if st.secrets["SNOWFLAKE"].lower() == "true":
-        snowflake_connection = create_session().connection
+        snowflake_session_response = call_snowflake_mcp_tool("snowflake_create_session")
+        if snowflake_session_response.get("status") != "success":
+            st.error(f"Fehler bei der Verbindung zu Snowflake: {snowflake_session_response.get('message')}")
 
     # Adding sidebar for options
     with st.sidebar:
         st.title("Optionen")
         st.write("Wähle die Parameter aus.")
 
-        # Using imported fetch_tables_with_retry
-        tables = fetch_tables_with_retry(snowflake_connection)
-        raw_tables = [
-            row[1]
-            for row in tables
-            if row[1].startswith("LANGCHAIN")
-        ]
-        # Updating: using all-uppercase for display_names and mapping
-        display_names = [
-            name.removeprefix("LANGCHAIN_").upper()
-            for name in raw_tables
-        ]
-        name_map = dict(zip(display_names, raw_tables))
+        # Getting tables via MCP tool
+        tables_response = call_snowflake_mcp_tool("snowflake_list_tables")
+        if tables_response.get("status") == "success":
+            raw_tables = [table["name"] for table in tables_response.get("tables", [])]
+            display_names = [table["display_name"] for table in tables_response.get("tables", [])]
+            name_map = dict(zip(display_names, raw_tables))
+        else:
+            st.error(f"Fehler beim Abrufen der Tabellen: {tables_response.get('message')}")
+            raw_tables = []
+            display_names = []
+            name_map = {}
+            
         options = ["Erstelle neue Tabelle"] + \
             display_names + ["Multi-Table-Selektion"]
 
@@ -439,15 +453,21 @@ elif func_choice == "❄️ Navigator":
             # Adding a button to drop the table
             if st.button("Tabelle löschen", key="drop_table"):
                 db_table_name = name_map[selected_disp]
-                try:
-                    drop_table_with_retry(snowflake_connection, db_table_name)
+                # Dropping table via MCP tool
+                drop_response = call_snowflake_mcp_tool(
+                    "snowflake_drop_table", 
+                    {"table_name": db_table_name}
+                )
+                if drop_response.get("status") == "success":
                     st.success(f"Tabelle {db_table_name} wurde gelöscht!")
                     st.toast(f"Tabelle {db_table_name} wurde gelöscht!", icon="✅")
-                    del st.session_state["vector"]
+                    if "vector" in st.session_state:
+                        del st.session_state["vector"]
                     time.sleep(3)
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Fehler beim Löschen der Tabelle: {e}")
+                else:
+                    st.error(f"Fehler beim Löschen der Tabelle: {drop_response.get('message')}")
+                    
         if selected_disp == "Erstelle neue Tabelle":
             try:
                 default_table_name = st.query_params.get_all("bucket")[0].upper()
@@ -643,44 +663,6 @@ elif func_choice == "❄️ Navigator":
                                                     d.metadata["source"] = minio_url
                                                 documents.extend(docs)
 
-                                                # Using Snowflake Cortex PARSE_DOCUMENT to extract text
-                                                # try:
-                                                #     # Creating a new connection for each parse (or reuse as needed)
-                                                #     ctx = snowflake_connection.cursor()
-                                                #     with open(local_path, "rb") as f:
-                                                #         file_bytes = f.read()
-
-                                                #     # Uploading file to Snowflake stage (if needed, else use PUT)                                                    
-                                                #     stage_name = "@GOOGLE_CLOUD"
-                                                #     stage_file = f"{uuid.uuid4().hex}_{os.path.basename(local_path)}"
-                                                #     put_sql = f"PUT file://{local_path} {stage_name}/{stage_file} OVERWRITE=TRUE"
-                                                #     ctx.execute(put_sql)
-
-                                                #     # Running PARSE_DOCUMENT
-                                                #     parse_sql = f"SELECT PARSE_DOCUMENT('{stage_name}/{stage_file}') AS parsed;"
-                                                #     ctx.execute(parse_sql)
-                                                #     result = ctx.fetchone()
-                                                #     if result and result[0]:
-                                                #         parsed = result[0]
-
-                                                #         # Extracting text from the parsed result
-                                                #         text = parsed.get('text', '') if isinstance(parsed, dict) else str(parsed)
-
-                                                #         # Creating a Document object (LangChain)
-                                                #         minio_url = f"{st.secrets['MinIO']['endpoint']}/{self.bucket_name}/{object_name}"
-                                                #         doc = Document(page_content=text, metadata={
-                                                #             "source": minio_url,
-                                                #             "filename": os.path.basename(local_path),
-                                                #             "page": 0
-                                                #         })
-                                                #         documents.append(doc)
-                                                #     else:
-                                                #         st.warning(f"PARSE_DOCUMENT returned no result for {object_name}")
-                                                #     ctx.close()
-                                                # except Exception as e:
-                                                #     st.warning(f"Fehler bei PARSE_DOCUMENT für {object_name}: {e}")
-                                                #     continue
-
                                 # Iterating over all URLs
                                 st.markdown("**URLs**")
                                 if len(self.urls[0]) > 0:
@@ -696,10 +678,7 @@ elif func_choice == "❄️ Navigator":
 
                         # Setting the start time
                         st.session_state.start = time.time()
-                        st.session_state.embeddings = SnowflakeEmbeddings(
-                            connection=snowflake_connection, model=st.session_state.option_embedding_model
-                        )
-
+                        
                         # Setting the online resources
                         urls = st.session_state.online_resources.split(',')
                         st.session_state.loader = CustomDirectoryLoader(
@@ -722,36 +701,42 @@ elif func_choice == "❄️ Navigator":
                             st.session_state.docs
                         )
 
-                        # Creating the vector store – explicitly specify your chosen table
-                        st.session_state.vector = SnowflakeVectorStore.from_documents(
-                            st.session_state.documents,
-                            st.session_state.embeddings,
-                            table=st.session_state.option_table,
-                            vector_length=st.session_state.option_vector_length
+                        # Preparing texts and metadata for the vector store
+                        texts = [doc.page_content for doc in st.session_state.documents]
+                        metadatas = [doc.metadata for doc in st.session_state.documents]
+                        
+                        # Creating the vector store via MCP tool
+                        vector_store_response = call_snowflake_mcp_tool(
+                            "snowflake_create_vector_store",
+                            {
+                                "table_name": st.session_state.option_table,
+                                "texts": texts,
+                                "metadatas": metadatas,
+                                "model": st.session_state.option_embedding_model,
+                                "vector_length": st.session_state.option_vector_length
+                            }
                         )
+                        
+                        if vector_store_response.get("status") == "success":
+                            # Set a flag to indicate we have a vector store
+                            st.session_state.vector = "mcp_vector_store"
+                            
+                            # Showing the time taken
+                            st.success(
+                                f"Dokumente wurden in {int(time.time() - st.session_state.start)} Sekunden integriert!", icon="✅")
+                            st.toast(
+                                f"Dokumente wurden in {int(time.time() - st.session_state.start)} Sekunden integriert!", icon="✅")
 
-                        # Showing the time taken
-                        st.success(
-                            f"Dokumente wurden in {int(time.time() - st.session_state.start)} Sekunden integriert!", icon="✅")
-                        st.toast(
-                            f"Dokumente wurden in {int(time.time() - st.session_state.start)} Sekunden integriert!", icon="✅")
-
-                        # Waiting for 3 seconds and then reloading the page
-                        time.sleep(3)
-                        st.rerun()
+                            # Waiting for 3 seconds and then reloading the page
+                            time.sleep(3)
+                            st.rerun()
+                        else:
+                            st.error(f"Fehler beim Erstellen des Vektorspeichers: {vector_store_response.get('message')}")
 
     # Connecting to existing vector store(s) if one or multi tables are selected (and not creating a new table)
     if 'vector' not in st.session_state and selected_disp != "Erstelle neue Tabelle":
-        st.session_state.embeddings = SnowflakeEmbeddings(
-            connection=snowflake_connection,
-            model=st.session_state.option_embedding_model
-        )
-        st.session_state.vector = SnowflakeVectorStore(
-            connection=snowflake_connection,
-            embedding=st.session_state.embeddings,
-            table=st.session_state.option_table,
-            vector_length=st.session_state.option_vector_length
-        )
+        # Mark that we're using the MCP tool for vector store access
+        st.session_state.vector = "mcp_vector_store"
 
     # Creating the chat interface
     if 'vector' in st.session_state:
@@ -764,38 +749,6 @@ elif func_choice == "❄️ Navigator":
                 msgs.add_ai_message(assistant)
             view_messages = st.expander("View the message contents in session state")
 
-            # Preparing LLM and prompt with message history
-            llm = Cortex(connection=snowflake_connection, model=st.session_state.option_model)
-            prompt = ChatPromptTemplate(
-                input_variables=["system", "history", "question", "context"],
-                messages=[
-                    ("system", "{system}\n<context>\n{context}\n</context>"),
-                    ("human", st.secrets["LLM"]["LLM_USER_EXAMPLE"]),
-                    ("ai", st.secrets["LLM"]["LLM_ASSISTANT_EXAMPLE"]),
-                    ("human", st.secrets["LLM"]["LLM_USER_EXAMPLE2"]),
-                    ("ai", st.secrets["LLM"]["LLM_ASSISTANT_EXAMPLE2"]),
-                    ("human", st.secrets["LLM"]["LLM_USER_EXAMPLE3"]),
-                    ("ai", st.secrets["LLM"]["LLM_ASSISTANT_EXAMPLE3"]),
-                    MessagesPlaceholder(variable_name="history"),
-                    ("human", "{question}"),
-                ]
-            )
-
-            # Creating document & retrieval chains
-            document_chain = create_stuff_documents_chain(llm, prompt)
-            retriever = st.session_state.vector.as_retriever()
-
-            # Ensuring output key for callbacks at retrieval_chain level
-            retrieval_chain = create_retrieval_chain(retriever, document_chain) | RunnableLambda(ensure_output_key_chain)
-
-            # Setting `RunnableWithMessageHistory` for chat
-            chain_with_history = RunnableWithMessageHistory(
-                retrieval_chain,
-                lambda session_id: msgs,
-                input_messages_key="question",
-                history_messages_key="history",
-            )
-
             # Rendering chat history
             for msg in msgs.messages:
                 st.chat_message(msg.type).write(msg.content)
@@ -805,33 +758,54 @@ elif func_choice == "❄️ Navigator":
             if user_input:
                 st.chat_message("human").write(user_input)
 
-                # Running chain with message history
+                # Running RAG query via MCP tool
                 st.session_state.start = time.time()
-                config = {"configurable": {"session_id": "any"}}
-                input_data = {"system": system, "question": user_input, "context": "", "input": user_input}
-                response = chain_with_history.invoke(input_data, config)
-
-                # Storing the response in session state for downstream use (e.g., similarity search)
-                st.session_state.response = response
-                answer = None
-                resp = st.session_state.response
-                if isinstance(resp, dict):
-                    answer = resp.get("output")
-                    if answer is None:
-                        # Trying 'answer' or first string value as fallback
-                        answer = resp.get("answer")
-                        if answer is None:
-                            for v in resp.values():
-                                if isinstance(v, str):
-                                    answer = v
-                                    break
-                if answer is None:
-                    answer = str(resp)
-                st.session_state.answer = answer.replace("Assistant: ", "").replace("\n", " ").lstrip()
-                processing_time = int(time.time() - st.session_state.start)
-                st.chat_message("ai").markdown(
-                    f"```\n{st.session_state.answer}\n```\n\n_(verarbeitet in {processing_time} Sekunden)_"
+                
+                # Call the snowflake_query_rag MCP tool
+                rag_response = call_snowflake_mcp_tool(
+                    "snowflake_query_rag",
+                    {
+                        "query": user_input,
+                        "system_prompt": system,
+                        "table_name": st.session_state.option_table,
+                        "model": st.session_state.option_model,
+                        "embedding_model": st.session_state.option_embedding_model,
+                        "k": 8
+                    }
                 )
+                
+                if rag_response.get("status") == "success":
+                    answer = rag_response.get("answer", "Keine Antwort erhalten.")
+                    answer = answer.replace("Assistant: ", "").replace("\n", " ").lstrip()
+                    
+                    # Store response for later use
+                    st.session_state.response = {
+                        "output": answer,
+                        "context": []
+                    }
+                    
+                    # Convert context from JSON to document format
+                    for doc_result in rag_response.get("context", []):
+                        doc = Document(
+                            page_content=doc_result.get("content", ""),
+                            metadata=doc_result.get("metadata", {})
+                        )
+                        st.session_state.response["context"].append(doc)
+                    
+                    st.session_state.answer = answer
+                    
+                    # Add the answer to chat history
+                    msgs.add_user_message(user_input)
+                    msgs.add_ai_message(answer)
+                    
+                    # Display the answer with processing time
+                    processing_time = int(time.time() - st.session_state.start)
+                    st.chat_message("ai").markdown(
+                        f"```\n{answer}\n```\n\n_(verarbeitet in {processing_time} Sekunden)_"
+                    )
+                else:
+                    error_msg = rag_response.get("message", "Ein unbekannter Fehler ist aufgetreten.")
+                    st.error(f"Fehler bei der RAG-Abfrage: {error_msg}")
 
             # Showing similarity search results if available
             if (
@@ -886,6 +860,8 @@ elif func_choice == "❄️ Navigator":
     else:
         if selected_disp == "Erstelle neue Tabelle":
             st.info("Bitte integriere zuerst Dokumente, um eine Vektorbank zu erstellen.")
+        else:
+            st.info("Verbindung zum Vektorspeicher wird hergestellt...")
 
 elif func_choice == "🤖 OpenAI Agents":
     if not st.session_state["IS_EMBED"]:
