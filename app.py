@@ -29,9 +29,7 @@ from langchain_community.document_loaders import Docx2txtLoader, CSVLoader, PyPD
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from typing import List
 from src.server.minio_utils import (
-    list_buckets,
     get_minio_client,
-    list_objects
 )
 from src.server.snowrag.snowrag import _reset_vector_store
 
@@ -215,6 +213,31 @@ def call_snowflake_mcp_tool(tool_name: str, params: dict = {}) -> dict:
         return {
             "status": "error", 
             "message": f"Fehler beim Aufrufen des Snowflake MCP Tools {tool_name}: {str(e)}"
+        }
+
+
+def call_minio_mcp_tool(tool_name: str, params: dict = {}) -> dict:
+    """Calling the MinIO MCP tool and parsing the JSON response."""
+    async def _invoke():
+        result = await _mcp_client.session.call_tool(tool_name, params)
+        return result
+    
+    try:
+        execution = asyncio.run_coroutine_threadsafe(_invoke(), _mcp_loop).result()
+        content = execution.content
+        
+        # Extract JSON from the first TextContent in the response
+        if isinstance(content, (list, tuple)) and len(content) > 0:
+            text_obj = content[0]
+            json_str = getattr(text_obj, 'text', text_obj)
+            return json.loads(json_str)
+        
+        return json.loads(str(content))
+    except Exception as e:
+        logging.error(f"Error calling MinIO MCP tool {tool_name}: {e}")
+        return {
+            "status": "error", 
+            "message": f"Fehler beim Aufrufen des MinIO MCP Tools {tool_name}: {str(e)}"
         }
 
 
@@ -561,10 +584,14 @@ elif func_choice == "❄️ Navigator":
     # Creating form for user input for new table
     if selected_disp == "Erstelle neue Tabelle":
         with st.form("vector_form"):
-            # Creating the MinIO client
-            minio_client = get_minio_client()
+            # Getting MinIO buckets via MCP tool
             try:
-                options_offline_resources = list_buckets(minio_client)
+                buckets_response = call_minio_mcp_tool("minio_list_buckets")
+                if buckets_response.get("status") == "success":
+                    options_offline_resources = buckets_response.get("buckets", [])
+                else:
+                    st.warning(f"Fehler beim Laden der MinIO Buckets: {buckets_response.get('message')}")
+                    options_offline_resources = []
             except Exception as e:
                 st.warning(f"Fehler beim Laden der MinIO Buckets: {e}")
                 options_offline_resources = []
@@ -598,16 +625,14 @@ elif func_choice == "❄️ Navigator":
                 with st.spinner("Dokumente werden verarbeitet..."):
                     if "vector" not in st.session_state:
                         class CustomDirectoryLoader:
-                            def __init__(self, urls, bucket_name: str, minio_client, glob_pattern: str = "*.*"):
+                            def __init__(self, urls, bucket_name: str, glob_pattern: str = "*.*"):
                                 """
                                 Initialize the loader with a MinIO bucket and a glob pattern.
                                 :param bucket_name: Name of the MinIO bucket.
-                                :param minio_client: MinIO client instance.
                                 :param glob_pattern: Glob pattern to match files within the bucket.
                                 """
                                 self.urls = urls
                                 self.bucket_name = bucket_name
-                                self.minio_client = minio_client
                                 self.glob_pattern = glob_pattern
 
                             def load(self) -> List[Document]:
@@ -619,11 +644,23 @@ elif func_choice == "❄️ Navigator":
                                 documents = []
                                 patterns = self.glob_pattern.split('|')
 
-                                # Listing objects in the selected MinIO bucket
+                                # Listing objects in the selected MinIO bucket via MCP tool
                                 st.markdown("**Dokumente**")
-                                object_names = list_objects(self.minio_client, self.bucket_name)
+                                objects_response = call_minio_mcp_tool("minio_list_objects", {"bucket_name": self.bucket_name})
+                                if objects_response.get("status") == "success":
+                                    object_names = objects_response.get("objects", [])
+                                else:
+                                    st.warning(f"Fehler beim Laden der MinIO-Objekte: {objects_response.get('message')}")
+                                    object_names = []
+                                
                                 if not object_names:
                                     st.warning("Keine Dateien im MinIO-Bucket gefunden.")
+                                    return documents
+
+                                # Creating MinIO client only for file downloads
+                                minio_client = get_minio_client()
+                                if not minio_client:
+                                    st.warning("Fehler beim Verbinden mit MinIO für Downloads.")
                                     return documents
 
                                 with tempfile.TemporaryDirectory() as tmpdir:
@@ -633,7 +670,7 @@ elif func_choice == "❄️ Navigator":
                                                 # Downloading the file from MinIO to a temp file
                                                 local_path = os.path.join(tmpdir, os.path.basename(object_name))
                                                 try:
-                                                    self.minio_client.fget_object(self.bucket_name, object_name, local_path)
+                                                    minio_client.fget_object(self.bucket_name, object_name, local_path)
                                                 except Exception as e:
                                                     st.warning(f"Fehler beim Herunterladen von MinIO: {e}")
                                                     continue
@@ -684,7 +721,6 @@ elif func_choice == "❄️ Navigator":
                         st.session_state.loader = CustomDirectoryLoader(
                             urls=urls,
                             bucket_name=st.session_state.option_offline_resources,
-                            minio_client=minio_client,
                             glob_pattern="*.docx|*.pdf|*.csv|*.txt"
                         )
 
